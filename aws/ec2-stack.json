@@ -1,0 +1,226 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for launching an EC2 instance to run the Next.js app.",
+  "Parameters": {
+    "BaseStackName": {
+      "Description": "The name of an existing stack for launching the EC2 instance.",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "KeyName": {
+      "Description": "The name of an existing EC2 KeyPair to enable SSH access to the instance.",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    },
+    "DeployModuleName": {
+      "Description": "The name of the Next.js module deployed to S3.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "IAMRoleForEC2": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "temp-nextjs-test-ec2-to-s3-iam-role",
+              {
+                "Ref": "AWS::Region"
+              }
+            ]
+          ]
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "S3GetPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:GetObject",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:s3:::",
+                          {
+                            "Fn::ImportValue": {
+                              "Fn::Sub": "${BaseStackName}-S3Bucket"
+                            }
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:ListBucket",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:s3:::",
+                          {
+                            "Fn::ImportValue": {
+                              "Fn::Sub": "${BaseStackName}-S3Bucket"
+                            }
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "temp-nextjs-test-ec2-to-s3-iam-role"
+          }
+        ]
+      }
+    },
+    "IAMInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "InstanceProfileName": "temp-nextjs-test-instance-profile",
+        "Roles": [
+          {
+            "Ref": "IAMRoleForEC2"
+          }
+        ]
+      }
+    },
+    "EC2Instance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "InstanceType": "t2.micro",
+        "ImageId": "ami-09a81b370b76de6a2",
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "NetworkInterfaces": [
+          {
+            "AssociatePublicIpAddress": "true",
+            "DeviceIndex": "0",
+            "SubnetId": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${BaseStackName}-Subnet"
+              }
+            },
+            "GroupSet": [
+              {
+                "Fn::ImportValue": {
+                  "Fn::Sub": "${BaseStackName}-SecurityGroupId"
+                }
+              }
+            ]
+          }
+        ],
+        "IamInstanceProfile": {
+          "Ref": "IAMInstanceProfile"
+        },
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "\n",
+              [
+                "#!/bin/bash -xe",
+                "sudo apt update -y",
+                "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash",
+                "export NVM_DIR=\"$HOME/.nvm\"",
+                "[ -s \"$NVM_DIR/nvm.sh\" ] && \\. \"$NVM_DIR/nvm.sh\"",
+                "nvm install --lts",
+                "node -e \"console.log('Running Node.js ' + process.version)\"",
+                "sudo apt install -y awscli",
+                "mkdir /app && cd /app",
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "aws s3 cp s3://",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${BaseStackName}-S3Bucket"
+                        }
+                      },
+                      "/",
+                      {
+                        "Ref": "DeployModuleName"
+                      },
+                      " ./",
+                      {
+                        "Ref": "DeployModuleName"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "tar zxf ",
+                      {
+                        "Ref": "DeployModuleName"
+                      },
+                      "&& rm ",
+                      {
+                        "Ref": "DeployModuleName"
+                      }
+                    ]
+                  ]
+                },
+                "sudo apt install -y nginx",
+                "cat <<EOF > /etc/nginx/sites-available/temp-nextjs-test",
+                "server {",
+                "    listen 80 default_server;",
+                "    listen [::]:80 default_server;",
+                "    server_name _;",
+                "    location / {",
+                "        proxy_pass http://localhost:3000;",
+                "    }",
+                "}",
+                "EOF",
+                "ln -s /etc/nginx/sites-available/temp-nextjs-test /etc/nginx/sites-enabled/",
+                "rm /etc/nginx/sites-enabled/default",
+                "sudo systemctl restart nginx",
+                "node server.js"
+              ]
+            ]
+          }
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "temp-nextjs-test-ec2"
+          }
+        ]
+      }
+    }
+  }
+}
