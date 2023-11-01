@@ -20,7 +20,7 @@
     "VPC": {
       "Type": "AWS::EC2::VPC",
       "Properties": {
-        "CidrBlock": "10.0.0.0/28",
+        "CidrBlock": "10.0.0.0/27",
         "Tags": [
           {
             "Key": "Name",
@@ -125,7 +125,7 @@
         "VpcEndpointType": "Gateway",
         "RouteTableIds": [
           {
-            "Ref": "RouteTable"
+            "Ref": "PublicRouteTable"
           }
         ]
       }
@@ -188,7 +188,7 @@
         }
       }
     },
-    "Subnet": {
+    "PublicSubnet1": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
         "VpcId": {
@@ -208,7 +208,32 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "temp-nextjs-test-public-subnet"
+            "Value": "temp-nextjs-test-public-subnet1"
+          }
+        ]
+      }
+    },
+    "PublicSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": "10.0.0.16/28",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "temp-nextjs-test-private-subnet2"
           }
         ]
       }
@@ -235,7 +260,7 @@
         }
       }
     },
-    "RouteTable": {
+    "PublicRouteTable": {
       "Type": "AWS::EC2::RouteTable",
       "Properties": {
         "VpcId": {
@@ -244,16 +269,16 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "temp-nextjs-test-route-table"
+            "Value": "temp-nextjs-test-public-route-table"
           }
         ]
       }
     },
-    "InternetRoute": {
+    "PublicInternetRoute": {
       "Type": "AWS::EC2::Route",
       "Properties": {
         "RouteTableId": {
-          "Ref": "RouteTable"
+          "Ref": "PublicRouteTable"
         },
         "DestinationCidrBlock": "0.0.0.0/0",
         "GatewayId": {
@@ -261,21 +286,57 @@
         }
       }
     },
-    "SubnetRouteTableAssociation": {
+    "PublicSubnetRouteTableAssociation1": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "SubnetId": {
-          "Ref": "Subnet"
+          "Ref": "PublicSubnet1"
         },
         "RouteTableId": {
-          "Ref": "RouteTable"
+          "Ref": "PublicRouteTable"
         }
       }
     },
-    "SecurityGroup": {
+    "PublicSubnetRouteTableAssociation2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet2"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        }
+      }
+    },
+    "ELBSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "AllowSSHAndHTTPSecurityGroup",
+        "GroupDescription": "AllowHTTPSSecurityGroup",
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "443",
+            "ToPort": "443",
+            "CidrIp": {
+              "Ref": "LocalIpAddress"
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "temp-nextjs-test-elb-security-group"
+          }
+        ]
+      }
+    },
+    "EC2SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "AllowSSHAndELBSecurityGroup",
         "VpcId": {
           "Ref": "VPC"
         },
@@ -292,15 +353,18 @@
             "IpProtocol": "tcp",
             "FromPort": "80",
             "ToPort": "80",
-            "CidrIp": {
-              "Ref": "LocalIpAddress"
+            "SourceSecurityGroupId": {
+              "Fn::GetAtt": [
+                "ELBSecurityGroup",
+                "GroupId"
+              ]
             }
           }
         ],
         "Tags": [
           {
             "Key": "Name",
-            "Value": "temp-nextjs-test-security-group"
+            "Value": "temp-nextjs-test-ec2-security-group"
           }
         ]
       }
@@ -317,26 +381,59 @@
         }
       }
     },
-    "Subnet": {
+    "VPC": {
       "Value": {
-        "Ref": "Subnet"
+        "Ref": "VPC"
       },
       "Export": {
         "Name": {
-          "Fn::Sub": "${AWS::StackName}-Subnet"
+          "Fn::Sub": "${AWS::StackName}-VPC"
         }
       }
     },
-    "SecurityGroupId": {
+    "PublicSubnet1": {
+      "Value": {
+        "Ref": "PublicSubnet1"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-PublicSubnet1"
+        }
+      }
+    },
+    "PublicSubnet2": {
+      "Value": {
+        "Ref": "PublicSubnet2"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-PublicSubnet2"
+        }
+      }
+    },
+    "ELBSecurityGroupId": {
       "Value": {
         "Fn::GetAtt": [
-          "SecurityGroup",
+          "ELBSecurityGroup",
           "GroupId"
         ]
       },
       "Export": {
         "Name": {
-          "Fn::Sub": "${AWS::StackName}-SecurityGroupId"
+          "Fn::Sub": "${AWS::StackName}-ELBSecurityGroupId"
+        }
+      }
+    },
+    "EC2SecurityGroupId": {
+      "Value": {
+        "Fn::GetAtt": [
+          "EC2SecurityGroup",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-EC2SecurityGroupId"
         }
       }
     },

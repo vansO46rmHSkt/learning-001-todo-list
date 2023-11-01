@@ -130,13 +130,13 @@
             "DeviceIndex": "0",
             "SubnetId": {
               "Fn::ImportValue": {
-                "Fn::Sub": "${BaseStackName}-Subnet"
+                "Fn::Sub": "${BaseStackName}-PublicSubnet1"
               }
             },
             "GroupSet": [
               {
                 "Fn::ImportValue": {
-                  "Fn::Sub": "${BaseStackName}-SecurityGroupId"
+                  "Fn::Sub": "${BaseStackName}-EC2SecurityGroupId"
                 }
               }
             ]
@@ -220,6 +220,18 @@
             "Value": "temp-nextjs-test-ec2"
           }
         ]
+      }
+    }
+  },
+  "Outputs": {
+    "EC2Instance": {
+      "Value": {
+        "Ref": "EC2Instance"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-EC2Instance"
+        }
       }
     }
   }

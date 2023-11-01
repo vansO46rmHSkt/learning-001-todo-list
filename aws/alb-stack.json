@@ -1,0 +1,158 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template of ACM and ALB for EC2 instance running the Next.js app.",
+  "Parameters": {
+    "BaseStackName": {
+      "Description": "The name of an existing stack of base stack",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "EC2StackName": {
+      "Description": "The name of an existing stack of ec2 stack",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "HostedZoneId": {
+      "Description": "Id of Hostedzone.",
+      "Type": "String"
+    },
+    "HostedZoneName": {
+      "Description": "Name of Hostedzone.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "ACMCertificate": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": {
+          "Ref": "HostedZoneName"
+        },
+        "DomainValidationOptions": [
+          {
+            "DomainName": {
+              "Ref": "HostedZoneName"
+            },
+            "HostedZoneId": {
+              "Ref": "HostedZoneId"
+            }
+          }
+        ],
+        "ValidationMethod": "DNS"
+      }
+    },
+    "ApplicationLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "temp-nextjs-test-alb",
+        "Scheme": "internet-facing",
+        "LoadBalancerAttributes": [
+          {
+            "Key": "idle_timeout.timeout_seconds",
+            "Value": "60"
+          }
+        ],
+        "SecurityGroups": [
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${BaseStackName}-ELBSecurityGroupId"
+            }
+          }
+        ],
+        "Subnets": [
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${BaseStackName}-PublicSubnet1"
+            }
+          },
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${BaseStackName}-PublicSubnet2"
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "temp-nextjs-test-alb"
+          }
+        ]
+      }
+    },
+    "TargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "temp-nextjs-test-target-group",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "${BaseStackName}-VPC"
+          }
+        },
+        "TargetType": "instance",
+        "Targets": [
+          {
+            "Id": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${EC2StackName}-EC2Instance"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "ApplicationLoadBalancerListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TargetGroup"
+            }
+          }
+        ],
+        "LoadBalancerArn": {
+          "Ref": "ApplicationLoadBalancer"
+        },
+        "Port": 443,
+        "Protocol": "HTTPS",
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "ACMCertificate"
+            }
+          }
+        ]
+      }
+    },
+    "RecordSet": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
+        },
+        "Name": {
+          "Ref": "HostedZoneName"
+        },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": {
+            "Fn::GetAtt": [
+              "ApplicationLoadBalancer",
+              "DNSName"
+            ]
+          },
+          "HostedZoneId": {
+            "Fn::GetAtt": [
+              "ApplicationLoadBalancer",
+              "CanonicalHostedZoneID"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
