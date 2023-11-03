@@ -1,0 +1,37 @@
+name: Deploy Next.js app to S3
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    branches:
+      - master
+jobs:
+  deploy: 
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./client
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: npm install
+      - name: Build
+        run: | 
+          npm run build 
+          mv .next/static .next/standalone/.next 
+          mv public .next/standalone
+          (cd ./.next/standalone && tar zcf ../../temp-nextjs-test-app.tar.gz ./)
+      - name: Configure AWS credentials from IAM Role
+        uses: aws-actions/configure-aws-credentials@v4
+        with: 
+          role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/temp-nextjs-test-s3-deploy-iam-role-${{secrets.AWS_REGION}}
+          aws-region: ${{secrets.AWS_REGION}}
+      - name: Deploy
+        run:
+          aws s3 cp temp-nextjs-test-app.tar.gz s3://temp-nextjs-test-s3

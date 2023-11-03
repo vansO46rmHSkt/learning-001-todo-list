@@ -2,8 +2,12 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Template for creating roles, VPC, and S3 to launch EC2 instances.",
   "Parameters": {
-    "UserArnForDeloyS3": {
-      "Description": "ARN of the user who will deploy to S3.",
+    "GithubUserName": {
+      "Description": "Name of Github user.",
+      "Type": "String"
+    },
+    "GithubRepositoryName": {
+      "Description": "Name of Github repository.",
       "Type": "String"
     },
     "LocalIpAddress": {
@@ -17,6 +21,18 @@
     }
   },
   "Resources": {
+    "OIDCProvider": {
+      "Type": "AWS::IAM::OIDCProvider",
+      "Properties": {
+        "Url": "https://token.actions.githubusercontent.com",
+        "ClientIdList": [
+          "sts.amazonaws.com"
+        ],
+        "ThumbprintList": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      }
+    },
     "VPC": {
       "Type": "AWS::EC2::VPC",
       "Properties": {
@@ -67,11 +83,31 @@
             {
               "Effect": "Allow",
               "Action": [
-                "sts:AssumeRole"
+                "sts:AssumeRoleWithWebIdentity"
               ],
               "Principal": {
-                "AWS": {
-                  "Ref": "UserArnForDeloyS3"
+                "Federated": {
+                  "Ref": "OIDCProvider"
+                }
+              },
+              "Condition": {
+                "StringLike": {
+                  "token.actions.githubusercontent.com:sub": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "repo:",
+                        {
+                          "Ref": "GithubUserName"
+                        },
+                        "/",
+                        {
+                          "Ref": "GithubRepositoryName"
+                        },
+                        ":ref:refs/heads/master"
+                      ]
+                    ]
+                  }
                 }
               }
             }
