@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Template for creating roles, VPC, and S3 to launch EC2 instances.",
+  "Description": "Template for deploying docker images to ECR",
   "Parameters": {
     "GithubUserName": {
       "Description": "Name of Github user.",
@@ -129,6 +129,34 @@
             "Value": "temp-nextjs-test-ecr-deploy-iam-role"
           }
         ]
+      }
+    }
+  },
+  "Outputs": {
+    "ECRRepositoryArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ECRRepository",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-ECRRepositoryArn"
+        }
+      }
+    },
+    "ECRRepositoryUri": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ECRRepository",
+          "RepositoryUri"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-ECRRepositoryUri"
+        }
       }
     }
   }
