@@ -122,11 +122,69 @@
       "Type": "AWS::ApiGatewayV2::Api",
       "Properties": {
         "Name": "temp-nextjs-test-api-gateway",
-        "ProtocolType": "HTTP",
+        "ProtocolType": "HTTP"
+      }
+    },
+    "ApiGatewayStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "AutoDeploy": true,
+        "StageName": "$default"
+      }
+    },
+    "ApiGatewayRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "RouteKey": "$default",
         "Target": {
-          "Fn::GetAtt": [
-            "Lambda",
-            "Arn"
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "ApiGatewayIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "ApiGatewayIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "PayloadFormatVersion": "2.0",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "Lambda",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
           ]
         }
       }
@@ -146,7 +204,7 @@
           "Ref": "AWS::AccountId"
         },
         "SourceArn": {
-          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/$default"
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/$default"
         }
       }
     }
