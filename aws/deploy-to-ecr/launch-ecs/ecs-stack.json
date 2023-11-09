@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "ECS Template to Next.js app",
+  "Description": "ECS template to Next.js app",
   "Parameters": {
     "BaseStackName": {
       "Description": "The name of an existing base stack for launching the ECS.",
