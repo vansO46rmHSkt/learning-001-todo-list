@@ -1,0 +1,139 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for DynamoDB",
+  "Resources": {
+    "DynamoDB": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "Task",
+        "KeySchema": [
+          {
+            "AttributeName": "UserId",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "TaskId",
+            "KeyType": "RANGE"
+          }
+        ],
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "UserId",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "TaskId",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "Parent_Order",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "UserId_Title",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "UserId_Category",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "UserId_Status",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "UpdatedAt",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PROVISIONED",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "ParentIndex",
+            "KeySchema": [
+              {
+                "AttributeName": "UserId",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "Parent_Order",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 1,
+              "WriteCapacityUnits": 1
+            }
+          },
+          {
+            "IndexName": "CategoryIndex",
+            "KeySchema": [
+              {
+                "AttributeName": "UserId_Category",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "Parent_Order",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 1,
+              "WriteCapacityUnits": 1
+            }
+          },
+          {
+            "IndexName": "TitleIndex",
+            "KeySchema": [
+              {
+                "AttributeName": "UserId_Title",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "Parent_Order",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 1,
+              "WriteCapacityUnits": 1
+            }
+          },
+          {
+            "IndexName": "StatusIndex",
+            "KeySchema": [
+              {
+                "AttributeName": "UserId_Status",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "UpdatedAt",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 1,
+              "WriteCapacityUnits": 1
+            }
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 1,
+          "WriteCapacityUnits": 1
+        }
+      }
+    }
+  }
+}
