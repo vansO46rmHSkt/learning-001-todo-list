@@ -86,7 +86,7 @@
             "Fn::Sub": "${VPCStackName}-VPC"
           }
         },
-        "HealthCheckPath": "/api/health"
+        "HealthCheckPath": "/api/v1/health"
       }
     },
     "HTTPlistener": {
