@@ -54,6 +54,25 @@ const TodoList = (props: { tasks: Task[] }) => {
     },
     [],
   );
+
+  const handleOnClose = useCallback(
+    (task: Task) => async () => {
+      const status = await fetch(
+        `http://localhost:3000/api/v1/tasks/${task.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            status: "closed",
+          }),
+        },
+      ).then((res) => res.status);
+      if (status === 200) {
+        action({ type: "remove", task });
+      }
+    },
+    [],
+  );
+
   return (
     <div className="relative flex flex-col items-center py-8">
       <form
@@ -79,7 +98,10 @@ const TodoList = (props: { tasks: Task[] }) => {
           <div className="w-1/3 bg-white p-8">
             <div className="group flex justify-between">
               <div className="flex items-center">
-                <button className="h-5 w-5 rounded-xl border"></button>
+                <button
+                  className="h-5 w-5 rounded-xl border"
+                  onClick={handleOnClose(task)}
+                />
                 <div
                   role="heading"
                   aria-level={4}

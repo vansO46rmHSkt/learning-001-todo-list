@@ -7,12 +7,13 @@ import {
   convertFromItem,
 } from "@/types/tasks";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { NextRequest } from "next/server";
 
 const TableName = "Task" as const;
 
-export const GET = async (request: Request) => {
+export const GET = async (request: NextRequest) => {
   const userId = "test01";
-  // const userId = (await request.json())["userId"];
+  const status = request.nextUrl.searchParams.get("status");
   const data = await paginationByQuery({
     TableName,
     IndexName: "ParentIndex",
@@ -20,8 +21,11 @@ export const GET = async (request: Request) => {
     ExpressionAttributeValues: { ":u": { S: userId }, ":p": { S: "Root#" } },
   });
 
+  console.log(data);
   return Response.json(
-    data?.map((i) => convertFromItem(i as Required<TaskItem>)),
+    data
+      ?.map((i) => convertFromItem(i as Required<TaskItem>))
+      .filter((i) => i.status === status),
     {
       status: 200,
     },
@@ -29,9 +33,8 @@ export const GET = async (request: Request) => {
 };
 
 export const POST = async (request: Request) => {
-  const requestBody = await request.json();
   const userId = "test01";
-  // const userId = requestBody["userId"];
+  const requestBody = await request.json();
   const draft = requestBody["task"] as DraftTask;
 
   const task = draftToTask(draft);
