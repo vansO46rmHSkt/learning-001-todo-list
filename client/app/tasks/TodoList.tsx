@@ -5,8 +5,10 @@ import { FormEventHandler, useCallback, useReducer } from "react";
 import { MdClose } from "react-icons/md";
 
 const actions: Record<string, (previous: Task[], user: Task) => Task[]> = {
-  add: (previous, task) => [task, ...previous],
-  remove: (previous, task) => previous.filter((t) => t.id !== task.id),
+  add: (previous, task) =>
+    [task, ...previous].sort((a, b) => a.order - b.order),
+  remove: (previous, task) =>
+    previous.filter((t) => t.id !== task.id).sort((a, b) => a.order - b.order),
 } as const;
 
 const TodoList = (props: { tasks: Task[] }) => {
@@ -18,17 +20,37 @@ const TodoList = (props: { tasks: Task[] }) => {
     [...props.tasks],
   );
 
-  const handleOnSubmit: FormEventHandler<HTMLFormElement> = useCallback((e) => {
-    e.preventDefault();
-    const title = (e.target as any).title.value as string;
-    if (title) {
-      action({ type: "add", task: { id: crypto.randomUUID(), title } });
-    }
-  }, []);
+  const handleOnSubmit: FormEventHandler<HTMLFormElement> = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const title = (e.target as any).title.value as string;
+      if (title) {
+        const response = await fetch("http://localhost:3000/api/v1/tasks", {
+          method: "POST",
+          body: JSON.stringify({
+            task: { order: tasks.length + 1, title },
+          }),
+        });
+        const task = await response.json();
+        if (response.status === 201) {
+          action({ type: "add", task });
+        }
+      }
+    },
+    [tasks.length],
+  );
 
   const handleOnRemove = useCallback(
-    (task: Task) => () => {
-      action({ type: "remove", task });
+    (task: Task) => async () => {
+      const status = await fetch(
+        `http://localhost:3000/api/v1/tasks/${task.id}`,
+        {
+          method: "DELETE",
+        },
+      ).then((res) => res.status);
+      if (status === 204) {
+        action({ type: "remove", task });
+      }
     },
     [],
   );

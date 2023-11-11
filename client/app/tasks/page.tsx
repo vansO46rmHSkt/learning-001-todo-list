@@ -1,25 +1,8 @@
-import { Task } from "@/types/tasks";
 import TodoList from "./TodoList";
-import { sleep } from "@/lib/misc";
 
-const TASKS = [
-  {
-    id: "1",
-    title: "title-1",
-  },
-  {
-    id: "2",
-    title: "title-2",
-  },
-  {
-    id: "3",
-    title: "title-3",
-  },
-] as const satisfies readonly Task[];
-
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 const TodoListPage = async () => {
-  const tasks = await sleep(1000).then(() => [...TASKS]);
-
+  const tasks = await fetcher("http://localhost:3000/api/v1/tasks");
   return <TodoList tasks={tasks} />;
 };
 
