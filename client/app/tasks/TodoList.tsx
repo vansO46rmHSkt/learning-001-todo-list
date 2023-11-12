@@ -1,21 +1,24 @@
 "use client";
 
-import { Task } from "@/types/tasks";
+import { DraftTask, TaskBase, taskStatus } from "@/types/tasks";
 import { FormEventHandler, useCallback, useReducer } from "react";
 import { MdClose } from "react-icons/md";
 
-const actions: Record<string, (previous: Task[], user: Task) => Task[]> = {
+const actions: Record<
+  string,
+  (previous: TaskBase[], user: TaskBase) => TaskBase[]
+> = {
   add: (previous, task) =>
     [task, ...previous].sort((a, b) => a.order - b.order),
   remove: (previous, task) =>
     previous.filter((t) => t.id !== task.id).sort((a, b) => a.order - b.order),
 } as const;
 
-const TodoList = (props: { tasks: Task[] }) => {
+const TodoList = (props: { tasks: TaskBase[] }) => {
   const [tasks, action] = useReducer(
     (
-      previous: Task[],
-      { type, task }: { type: keyof typeof actions; task: Task },
+      previous: TaskBase[],
+      { type, task }: { type: keyof typeof actions; task: TaskBase },
     ) => actions[type](previous, task),
     [...props.tasks],
   );
@@ -25,11 +28,17 @@ const TodoList = (props: { tasks: Task[] }) => {
       e.preventDefault();
       const title = (e.target as any).title.value as string;
       if (title) {
+        const draft: DraftTask = {
+          order: tasks.length + 1,
+          parent: "",
+          title,
+          category: "",
+          detail: "",
+          status: "Draft",
+        };
         const response = await fetch("http://localhost:3000/api/v1/tasks", {
           method: "POST",
-          body: JSON.stringify({
-            task: { order: tasks.length + 1, title },
-          }),
+          body: JSON.stringify(draft),
         });
         const task = await response.json();
         if (response.status === 201) {
@@ -41,7 +50,7 @@ const TodoList = (props: { tasks: Task[] }) => {
   );
 
   const handleOnRemove = useCallback(
-    (task: Task) => async () => {
+    (task: TaskBase) => async () => {
       const status = await fetch(
         `http://localhost:3000/api/v1/tasks/${task.id}`,
         {
@@ -56,13 +65,13 @@ const TodoList = (props: { tasks: Task[] }) => {
   );
 
   const handleOnClose = useCallback(
-    (task: Task) => async () => {
+    (task: TaskBase) => async () => {
       const status = await fetch(
         `http://localhost:3000/api/v1/tasks/${task.id}`,
         {
           method: "PUT",
           body: JSON.stringify({
-            status: "closed",
+            status: taskStatus.Closed,
           }),
         },
       ).then((res) => res.status);

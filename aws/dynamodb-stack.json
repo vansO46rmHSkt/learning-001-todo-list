@@ -5,58 +5,50 @@
     "DynamoDB": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
-        "TableName": "Task",
+        "TableName": "Todo_App",
+        "BillingMode": "PROVISIONED",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "PK_GSI1PK_GSI3PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "SK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI1SK_GSI2SK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI2PK",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "GSI3SK",
+            "AttributeType": "S"
+          }
+        ],
         "KeySchema": [
           {
-            "AttributeName": "UserId",
+            "AttributeName": "PK_GSI1PK_GSI3PK",
             "KeyType": "HASH"
           },
           {
-            "AttributeName": "TaskId",
+            "AttributeName": "SK",
             "KeyType": "RANGE"
           }
         ],
-        "AttributeDefinitions": [
-          {
-            "AttributeName": "UserId",
-            "AttributeType": "S"
-          },
-          {
-            "AttributeName": "TaskId",
-            "AttributeType": "S"
-          },
-          {
-            "AttributeName": "Parent_Order",
-            "AttributeType": "S"
-          },
-          {
-            "AttributeName": "UserId_Title",
-            "AttributeType": "S"
-          },
-          {
-            "AttributeName": "UserId_Category",
-            "AttributeType": "S"
-          },
-          {
-            "AttributeName": "UserId_Status",
-            "AttributeType": "S"
-          },
-          {
-            "AttributeName": "UpdatedAt",
-            "AttributeType": "S"
-          }
-        ],
-        "BillingMode": "PROVISIONED",
         "GlobalSecondaryIndexes": [
           {
-            "IndexName": "ParentIndex",
+            "IndexName": "GSI1",
             "KeySchema": [
               {
-                "AttributeName": "UserId",
+                "AttributeName": "PK_GSI1PK_GSI3PK",
                 "KeyType": "HASH"
               },
               {
-                "AttributeName": "Parent_Order",
+                "AttributeName": "GSI1SK_GSI2SK",
                 "KeyType": "RANGE"
               }
             ],
@@ -69,14 +61,14 @@
             }
           },
           {
-            "IndexName": "CategoryIndex",
+            "IndexName": "GSI2",
             "KeySchema": [
               {
-                "AttributeName": "UserId_Category",
+                "AttributeName": "GSI2PK",
                 "KeyType": "HASH"
               },
               {
-                "AttributeName": "Parent_Order",
+                "AttributeName": "GSI1SK_GSI2SK",
                 "KeyType": "RANGE"
               }
             ],
@@ -89,34 +81,14 @@
             }
           },
           {
-            "IndexName": "TitleIndex",
+            "IndexName": "GSI3",
             "KeySchema": [
               {
-                "AttributeName": "UserId_Title",
+                "AttributeName": "PK_GSI1PK_GSI3PK",
                 "KeyType": "HASH"
               },
               {
-                "AttributeName": "Parent_Order",
-                "KeyType": "RANGE"
-              }
-            ],
-            "Projection": {
-              "ProjectionType": "ALL"
-            },
-            "ProvisionedThroughput": {
-              "ReadCapacityUnits": 1,
-              "WriteCapacityUnits": 1
-            }
-          },
-          {
-            "IndexName": "StatusIndex",
-            "KeySchema": [
-              {
-                "AttributeName": "UserId_Status",
-                "KeyType": "HASH"
-              },
-              {
-                "AttributeName": "UpdatedAt",
+                "AttributeName": "GSI3SK",
                 "KeyType": "RANGE"
               }
             ],

@@ -9,6 +9,8 @@ if (typeof window !== "undefined") {
   throw new Error("This file must be imported in server side");
 }
 
+export const TABLE_NAME = "Todo_App" as const;
+
 export const client = new DynamoDBClient({});
 
 export const paginationByQuery = async (

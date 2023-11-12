@@ -1,43 +1,69 @@
 import { AttributeValue } from "@aws-sdk/client-dynamodb";
 
-const SPLITTER = "#" as const;
-const ROOT_TASK_PREFIX = "Root" as const;
+export const SPLITTER = "#" as const;
+export const ROOT_TASK_PREFIX = "Root" as const;
 
-type TaskStatus = "normal" | "important" | "closed";
+export const taskStatus = {
+  Draft: "Draft",
+  Open: "Open",
+  Closed: "Closed",
+} as const;
+type TaskStatus = keyof typeof taskStatus;
 
-export interface DraftTask {
-  parent?: string;
+export interface TaskBase {
+  id?: string;
+  status: TaskStatus;
+  parent: string;
   order: number;
   title: string;
-  category?: string;
-  status?: TaskStatus;
-  detail?: string;
+  category: string;
+  detail: string;
+  createdAt?: string;
+  updatedAt?: string;
+  closedAt?: string;
 }
 
-export interface Task extends Required<DraftTask> {
+export interface DraftTask extends TaskBase {
+  status: "Draft";
+}
+
+export interface OpenTask extends TaskBase {
   id: string;
-  parent: string;
+  status: "Open";
   createdAt: string;
   updatedAt: string;
 }
 
+export interface ClosedTask extends TaskBase {
+  id: string;
+  status: "Closed";
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string;
+}
+
 export interface TaskItem extends Record<string, AttributeValue> {
-  UserId: {
+  // UserId
+  PK_GSI1PK_GSI3PK: {
     S: string;
   };
-  TaskId: {
+  // Task#TaskId
+  SK: {
     S: string;
   };
-  Parent_Order: {
+  // Status#Parent#Order
+  GSI1SK_GSI2SK: {
     S: string;
   };
-  UserId_Title: {
+  // UserId#CategoryId
+  GSI2PK: {
     S: string;
   };
-  UserId_Category: {
+  // ClosedAt
+  GSI3SK?: {
     S: string;
   };
-  UserId_Status: {
+  Title: {
     S: string;
   };
   Detail: {
@@ -51,74 +77,100 @@ export interface TaskItem extends Record<string, AttributeValue> {
   };
 }
 
-export const draftToTask = (draft: DraftTask): Task => {
+export const openTask = (task: DraftTask | ClosedTask): OpenTask => {
   const now = new Date().toISOString();
-  const parent = draft.parent || ROOT_TASK_PREFIX;
-  const category = draft.category ?? "";
-  const detail = draft.detail ?? "";
+  const parent = task.parent || ROOT_TASK_PREFIX;
+  const { closedAt, ...rest } = task;
   return {
-    ...draft,
+    ...rest,
     id: crypto.randomUUID(),
     parent,
-    category,
-    detail,
-    status: "normal",
-    createdAt: now,
+    status: "Open",
+    createdAt: task.createdAt || now,
     updatedAt: now,
+  };
+};
+
+export const closeTask = (task: OpenTask): ClosedTask => {
+  const now = new Date().toISOString();
+  return {
+    ...task,
+    status: "Closed",
+    updatedAt: now,
+    closedAt: now,
   };
 };
 
 export const convertToItem = (
   userId: string,
-  task: Task,
+  task: OpenTask | ClosedTask,
   isCreated = false,
 ): typeof isCreated extends true ? Required<TaskItem> : TaskItem => {
   return {
-    UserId: {
+    PK_GSI1PK_GSI3PK: {
       S: userId,
     },
-    TaskId: {
-      S: task.id,
+    SK: {
+      S: `Task${SPLITTER}${task.id}`,
     },
-    Parent_Order: {
-      S: `${task.parent}${SPLITTER}${`${task.order}`.padStart(10, "0")}`,
+    GSI1SK_GSI2SK: {
+      S: `Task${SPLITTER}${task.status}${SPLITTER}${
+        task.parent
+      }${SPLITTER}${`${task.order}`.padStart(10, "0")}`,
     },
-    UserId_Title: {
-      S: `${userId}${SPLITTER}${task.title}`,
-    },
-    UserId_Category: {
+    GSI2PK: {
       S: `${userId}${SPLITTER}${task.category}`,
     },
-    UserId_Status: {
-      S: `${userId}${SPLITTER}${task.status}`,
+    Title: {
+      S: `${task.title}`,
     },
     Detail: {
       S: task.detail,
     },
-    ...(isCreated ? { CreatedAt: { S: task.createdAt } } : {}),
     UpdatedAt: {
       S: task.updatedAt,
     },
+    ...(isCreated ? { CreatedAt: { S: task.createdAt } } : {}),
+    ...(task.closedAt ? { GSI3SK: { S: task.closedAt } } : {}),
   };
 };
 
 const getSecondKey = (key: string): string =>
   key.split(SPLITTER).slice(1).join(SPLITTER);
 
-export const convertFromItem = (item: Required<TaskItem>): Task => {
-  const [parent, order] = item.Parent_Order.S.split(SPLITTER);
-  const title = getSecondKey(item.UserId_Title.S);
-  const category = getSecondKey(item.UserId_Category.S);
-  const status = getSecondKey(item.UserId_Status.S);
+export const convertFromItem = (
+  item: Required<TaskItem>,
+): OpenTask | ClosedTask => {
+  const [, status, parent, order] = item.GSI1SK_GSI2SK.S.split(SPLITTER);
+  const id = getSecondKey(item.SK.S);
+  const category = getSecondKey(item.GSI2PK.S);
   return {
-    id: item.TaskId.S,
+    id,
     parent,
     order: Number.parseInt(order, 10),
-    title,
     category,
     status: status as never,
+    title: item.Title.S,
     detail: item.Detail.S,
     createdAt: item.CreatedAt.S,
     updatedAt: item.UpdatedAt.S,
+    closedAt: item.GSI3SK?.S,
   };
 };
+
+export const mergeTask = <T extends TaskBase>(before: T, after: T): T => {
+  return ([...Object.keys(after)] as (keyof T)[]).reduce(
+    (acc, key) => {
+      if (after[key] != null) {
+        acc[key] = after[key] as never;
+      }
+      return acc;
+    },
+    {
+      ...before,
+    } as T,
+  );
+};
+
+export const filterPrimaryKey = (key: string): boolean =>
+  !key.startsWith("PK") && !key.startsWith("SK");

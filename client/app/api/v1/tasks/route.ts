@@ -1,31 +1,35 @@
-import { client, paginationByQuery } from "@/lib/dynamodb";
+import { TABLE_NAME, client, paginationByQuery } from "@/lib/dynamodb";
 import {
   DraftTask,
   TaskItem,
-  draftToTask,
+  openTask,
   convertToItem,
   convertFromItem,
+  SPLITTER,
+  ROOT_TASK_PREFIX,
+  taskStatus,
 } from "@/types/tasks";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { NextRequest } from "next/server";
-
-const TableName = "Task" as const;
 
 export const GET = async (request: NextRequest) => {
   const userId = "test01";
   const status = request.nextUrl.searchParams.get("status");
   const data = await paginationByQuery({
-    TableName,
-    IndexName: "ParentIndex",
-    KeyConditionExpression: "UserId = :u AND begins_with(Parent_Order, :p)",
-    ExpressionAttributeValues: { ":u": { S: userId }, ":p": { S: "Root#" } },
+    TableName: TABLE_NAME,
+    IndexName: "GSI1",
+    KeyConditionExpression:
+      "PK_GSI1PK_GSI3PK = :u AND begins_with(GSI1SK_GSI2SK, :p)",
+    ExpressionAttributeValues: {
+      ":u": { S: userId },
+      ":p": {
+        S: `Task${SPLITTER}${status}${SPLITTER}${ROOT_TASK_PREFIX}`,
+      },
+    },
   });
 
-  console.log(data);
   return Response.json(
-    data
-      ?.map((i) => convertFromItem(i as Required<TaskItem>))
-      .filter((i) => i.status === status),
+    data?.map((i) => convertFromItem(i as Required<TaskItem>)),
     {
       status: 200,
     },
@@ -34,13 +38,12 @@ export const GET = async (request: NextRequest) => {
 
 export const POST = async (request: Request) => {
   const userId = "test01";
-  const requestBody = await request.json();
-  const draft = requestBody["task"] as DraftTask;
+  const draft = (await request.json()) as DraftTask;
 
-  const task = draftToTask(draft);
+  const task = openTask(draft);
   await client.send(
     new PutItemCommand({
-      TableName,
+      TableName: TABLE_NAME,
       Item: convertToItem(userId, task, true),
     }),
   );
