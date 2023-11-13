@@ -1,15 +1,13 @@
-import { TABLE_NAME, client } from "@/lib/dynamodb";
+import { TABLE_NAME, client } from "@/shared/dynamodb";
+import { ClosedTask, OpenTask, SPLITTER } from "@/types/tasks";
 import {
-  ClosedTask,
-  OpenTask,
-  SPLITTER,
   TaskItem,
   closeTask,
   convertFromItem,
   convertToItem,
   filterPrimaryKey,
   mergeTask,
-} from "@/types/tasks";
+} from "../actions";
 import {
   DeleteItemCommand,
   GetItemCommand,

@@ -1,14 +1,6 @@
-import { TABLE_NAME, client, paginationByQuery } from "@/lib/dynamodb";
-import {
-  DraftTask,
-  TaskItem,
-  openTask,
-  convertToItem,
-  convertFromItem,
-  SPLITTER,
-  ROOT_TASK_PREFIX,
-  taskStatus,
-} from "@/types/tasks";
+import { TABLE_NAME, client, paginationByQuery } from "@/shared/dynamodb";
+import { DraftTask, SPLITTER, ROOT_TASK_PREFIX } from "@/types/tasks";
+import { TaskItem, openTask, convertToItem, convertFromItem } from "./actions";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { NextRequest } from "next/server";
 
@@ -23,7 +15,7 @@ export const GET = async (request: NextRequest) => {
     ExpressionAttributeValues: {
       ":u": { S: userId },
       ":p": {
-        S: `Task${SPLITTER}${status}${SPLITTER}${ROOT_TASK_PREFIX}`,
+        S: `Task${SPLITTER}${status}${SPLITTER}${ROOT_TASK_PREFIX}${SPLITTER}`,
       },
     },
   });
