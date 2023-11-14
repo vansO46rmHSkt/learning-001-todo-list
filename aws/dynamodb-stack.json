@@ -2,7 +2,7 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Template for DynamoDB",
   "Resources": {
-    "DynamoDB": {
+    "DynamoDBTable": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
         "TableName": "Todo_App",
@@ -104,6 +104,21 @@
         "ProvisionedThroughput": {
           "ReadCapacityUnits": 1,
           "WriteCapacityUnits": 1
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "DynamoDBArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DynamoDBTable",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-DynamoDBTableArn"
         }
       }
     }

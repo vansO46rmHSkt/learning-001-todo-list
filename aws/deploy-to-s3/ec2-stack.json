@@ -15,6 +15,11 @@
     "DeployModuleName": {
       "Description": "The name of the Next.js module deployed to S3.",
       "Type": "String"
+    },
+    "DynamoDBStackName": {
+      "Description": "The name of an existing dynamodb stack",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
     }
   },
   "Resources": {
@@ -88,6 +93,48 @@
                               "Fn::Sub": "${BaseStackName}-S3Bucket"
                             }
                           }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "DynamoDBAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:Scan",
+                    "dynamodb:Query",
+                    "dynamodb:ConditionCheckItem"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "${DynamoDBStackName}-DynamoDBTableArn"
+                      }
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::ImportValue": {
+                              "Fn::Sub": "${DynamoDBStackName}-DynamoDBTableArn"
+                            }
+                          },
+                          "/index/*"
                         ]
                       ]
                     }

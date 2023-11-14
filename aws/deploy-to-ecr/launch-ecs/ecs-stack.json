@@ -16,6 +16,11 @@
       "Description": "The name of an existing ALB stack for launching the ECS.",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "DynamoDBStackName": {
+      "Description": "The name of an existing dynamodb stack",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
     }
   },
   "Resources": {
@@ -90,6 +95,48 @@
                   "Effect": "Allow",
                   "Action": "ecr:GetAuthorizationToken",
                   "Resource": "*"
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "DynamoDBAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:Scan",
+                    "dynamodb:Query",
+                    "dynamodb:ConditionCheckItem"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "${DynamoDBStackName}-DynamoDBTableArn"
+                      }
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::ImportValue": {
+                              "Fn::Sub": "${DynamoDBStackName}-DynamoDBTableArn"
+                            }
+                          },
+                          "/index/*"
+                        ]
+                      ]
+                    }
+                  ]
                 }
               ]
             }

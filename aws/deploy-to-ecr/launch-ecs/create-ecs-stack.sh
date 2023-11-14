@@ -10,6 +10,7 @@ aws cloudformation create-stack \
         ParameterKey=BaseStackName,ParameterValue=$BASE_STACK_NAME \
         ParameterKey=VPCStackName,ParameterValue=$VPC_STACK_NAME \
         ParameterKey=ALBStackName,ParameterValue=$ALB_STACK_NAME \
+        ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
     --role-arn $ROLE_ARN \
     --on-failure DELETE \
     --no-retain-except-on-create
