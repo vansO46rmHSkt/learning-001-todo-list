@@ -2,7 +2,7 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Template for launching an EC2 instance to run the Next.js app.",
   "Parameters": {
-    "BaseStackName": {
+    "S3AndVpcStackName": {
       "Description": "The name of an existing stack for launching the EC2 instance.",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
@@ -20,6 +20,14 @@
       "Description": "The name of an existing dynamodb stack",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "HostedZoneId": {
+      "Description": "Id of Hostedzone.",
+      "Type": "String"
+    },
+    "HostedZoneName": {
+      "Description": "Name of Hostedzone.",
+      "Type": "String"
     }
   },
   "Resources": {
@@ -70,7 +78,7 @@
                           "arn:aws:s3:::",
                           {
                             "Fn::ImportValue": {
-                              "Fn::Sub": "${BaseStackName}-S3Bucket"
+                              "Fn::Sub": "${S3AndVpcStackName}-S3Bucket"
                             }
                           },
                           "/*"
@@ -90,7 +98,7 @@
                           "arn:aws:s3:::",
                           {
                             "Fn::ImportValue": {
-                              "Fn::Sub": "${BaseStackName}-S3Bucket"
+                              "Fn::Sub": "${S3AndVpcStackName}-S3Bucket"
                             }
                           }
                         ]
@@ -177,13 +185,13 @@
             "DeviceIndex": "0",
             "SubnetId": {
               "Fn::ImportValue": {
-                "Fn::Sub": "${BaseStackName}-PublicSubnet1"
+                "Fn::Sub": "${S3AndVpcStackName}-PublicSubnet1"
               }
             },
             "GroupSet": [
               {
                 "Fn::ImportValue": {
-                  "Fn::Sub": "${BaseStackName}-EC2SecurityGroupId"
+                  "Fn::Sub": "${S3AndVpcStackName}-EC2SecurityGroupId"
                 }
               }
             ]
@@ -213,7 +221,7 @@
                       "aws s3 cp s3://",
                       {
                         "Fn::ImportValue": {
-                          "Fn::Sub": "${BaseStackName}-S3Bucket"
+                          "Fn::Sub": "${S3AndVpcStackName}-S3Bucket"
                         }
                       },
                       "/",
@@ -268,16 +276,134 @@
           }
         ]
       }
-    }
-  },
-  "Outputs": {
-    "EC2Instance": {
-      "Value": {
-        "Ref": "EC2Instance"
-      },
-      "Export": {
+    },
+    "ACMCertificate": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": {
+          "Ref": "HostedZoneName"
+        },
+        "DomainValidationOptions": [
+          {
+            "DomainName": {
+              "Ref": "HostedZoneName"
+            },
+            "HostedZoneId": {
+              "Ref": "HostedZoneId"
+            }
+          }
+        ],
+        "ValidationMethod": "DNS"
+      }
+    },
+    "ApplicationLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "temp-nextjs-test-alb",
+        "Scheme": "internet-facing",
+        "LoadBalancerAttributes": [
+          {
+            "Key": "idle_timeout.timeout_seconds",
+            "Value": "60"
+          }
+        ],
+        "SecurityGroups": [
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${S3AndVpcStackName}-ELBSecurityGroupId"
+            }
+          }
+        ],
+        "Subnets": [
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${S3AndVpcStackName}-PublicSubnet1"
+            }
+          },
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${S3AndVpcStackName}-PublicSubnet2"
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "temp-nextjs-test-alb"
+          }
+        ]
+      }
+    },
+    "TargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "temp-nextjs-test-target-group",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "${S3AndVpcStackName}-VPC"
+          }
+        },
+        "TargetType": "instance",
+        "Targets": [
+          {
+            "Id": {
+              "Ref": "EC2Instance"
+            }
+          }
+        ]
+      }
+    },
+    "ApplicationLoadBalancerListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TargetGroup"
+            }
+          }
+        ],
+        "LoadBalancerArn": {
+          "Ref": "ApplicationLoadBalancer"
+        },
+        "Port": 443,
+        "Protocol": "HTTPS",
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "ACMCertificate"
+            }
+          }
+        ]
+      }
+    },
+    "RecordSet": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
+        },
         "Name": {
-          "Fn::Sub": "${AWS::StackName}-EC2Instance"
+          "Ref": "HostedZoneName"
+        },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": {
+            "Fn::GetAtt": [
+              "ApplicationLoadBalancer",
+              "DNSName"
+            ]
+          },
+          "HostedZoneId": {
+            "Fn::GetAtt": [
+              "ApplicationLoadBalancer",
+              "CanonicalHostedZoneID"
+            ]
+          }
         }
       }
     }

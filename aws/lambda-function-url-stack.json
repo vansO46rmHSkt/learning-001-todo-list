@@ -1,8 +1,8 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Lambda template to Next.js app",
+  "Description": "Lambda function urls template to Next.js app",
   "Parameters": {
-    "BaseStackName": {
+    "ECRStackName": {
       "Description": "The name of an existing stack for launching the Lambda.",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
@@ -84,7 +84,7 @@
                   "Resource": [
                     {
                       "Fn::ImportValue": {
-                        "Fn::Sub": "${BaseStackName}-ECRRepositoryArn"
+                        "Fn::Sub": "${ECRStackName}-ECRRepositoryArn"
                       }
                     }
                   ]
@@ -149,7 +149,7 @@
               [
                 {
                   "Fn::ImportValue": {
-                    "Fn::Sub": "${BaseStackName}-ECRRepositoryUri"
+                    "Fn::Sub": "${ECRStackName}-ECRRepositoryUri"
                   }
                 },
                 ":latest"
@@ -162,76 +162,23 @@
             "IAMRoleForLambda",
             "Arn"
           ]
+        },
+        "Environment": {
+          "Variables": {
+            "AWS_LWA_INVOKE_MODE": "response_stream"
+          }
         }
       }
     },
-    "ApiGateway": {
-      "Type": "AWS::ApiGatewayV2::Api",
+    "LambdaUrl": {
+      "Type": "AWS::Lambda::Url",
       "Properties": {
-        "Name": "temp-nextjs-test-api-gateway",
-        "ProtocolType": "HTTP"
-      }
-    },
-    "ApiGatewayStage": {
-      "Type": "AWS::ApiGatewayV2::Stage",
-      "Properties": {
-        "ApiId": {
-          "Ref": "ApiGateway"
-        },
-        "AutoDeploy": true,
-        "StageName": "$default"
-      }
-    },
-    "ApiGatewayRoute": {
-      "Type": "AWS::ApiGatewayV2::Route",
-      "Properties": {
-        "ApiId": {
-          "Ref": "ApiGateway"
-        },
-        "RouteKey": "$default",
-        "Target": {
-          "Fn::Join": [
-            "/",
-            [
-              "integrations",
-              {
-                "Ref": "ApiGatewayIntegration"
-              }
-            ]
-          ]
-        }
-      }
-    },
-    "ApiGatewayIntegration": {
-      "Type": "AWS::ApiGatewayV2::Integration",
-      "Properties": {
-        "ApiId": {
-          "Ref": "ApiGateway"
-        },
-        "IntegrationMethod": "POST",
-        "IntegrationType": "AWS_PROXY",
-        "PayloadFormatVersion": "2.0",
-        "IntegrationUri": {
-          "Fn::Join": [
-            "",
-            [
-              "arn:",
-              {
-                "Ref": "AWS::Partition"
-              },
-              ":apigateway:",
-              {
-                "Ref": "AWS::Region"
-              },
-              ":lambda:path/2015-03-31/functions/",
-              {
-                "Fn::GetAtt": [
-                  "Lambda",
-                  "Arn"
-                ]
-              },
-              "/invocations"
-            ]
+        "AuthType": "NONE",
+        "InvokeMode": "RESPONSE_STREAM",
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "Lambda",
+            "Arn"
           ]
         }
       }
@@ -239,34 +186,79 @@
     "InvokeLambdaPermission": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
-        "Action": "lambda:InvokeFunction",
+        "Action": "lambda:InvokeFunctionUrl",
+        "FunctionUrlAuthType": "NONE",
         "FunctionName": {
           "Fn::GetAtt": [
             "Lambda",
             "Arn"
           ]
         },
-        "Principal": "apigateway.amazonaws.com",
-        "SourceAccount": {
-          "Ref": "AWS::AccountId"
-        },
-        "SourceArn": {
-          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/$default"
+        "Principal": "*"
+      }
+    },
+    "CloudFrontDistribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Origins": [
+            {
+              "Id": "Origin1",
+              "DomainName": {
+                "Fn::Select": [
+                  2,
+                  {
+                    "Fn::Split": [
+                      "/",
+                      {
+                        "Fn::GetAtt": [
+                          "LambdaUrl",
+                          "FunctionUrl"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "CustomOriginConfig": {
+                "OriginProtocolPolicy": "https-only",
+                "OriginSSLProtocols": [
+                  "TLSv1.2"
+                ]
+              }
+            }
+          ],
+          "Enabled": "true",
+          "DefaultCacheBehavior": {
+            "AllowedMethods": [
+              "GET",
+              "HEAD"
+            ],
+            "ViewerProtocolPolicy": "redirect-to-https",
+            "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+            "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac",
+            "Compress": true,
+            "TargetOriginId": "Origin1"
+          },
+          "PriceClass": "PriceClass_200",
+          "ViewerCertificate": {
+            "CloudFrontDefaultCertificate": "true"
+          }
         }
       }
     }
   },
   "Outputs": {
-    "ApiEndpoint": {
+    "Url": {
       "Value": {
         "Fn::GetAtt": [
-          "ApiGateway",
-          "ApiEndpoint"
+          "LambdaUrl",
+          "FunctionUrl"
         ]
       },
       "Export": {
         "Name": {
-          "Fn::Sub": "${AWS::StackName}-ApiEndpoint"
+          "Fn::Sub": "${AWS::StackName}-Url"
         }
       }
     }
