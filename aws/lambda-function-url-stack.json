@@ -2,6 +2,15 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Lambda function urls template to Next.js app",
   "Parameters": {
+    "CognitoStackName": {
+      "Description": "The name of an existing stack for launching the Lambda.",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "ACMCertificateArn": {
+      "Description": "ARN of ACM Certificate created in us-east-1 region.",
+      "Type": "String"
+    },
     "ECRStackName": {
       "Description": "The name of an existing stack for launching the Lambda.",
       "Type": "String",
@@ -11,6 +20,14 @@
       "Description": "The name of an existing dynamodb stack",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "HostedZoneId": {
+      "Description": "Id of Hostedzone.",
+      "Type": "String"
+    },
+    "HostedZoneName": {
+      "Description": "Name of Hostedzone.",
+      "Type": "String"
     }
   },
   "Resources": {
@@ -165,7 +182,42 @@
         },
         "Environment": {
           "Variables": {
-            "AWS_LWA_INVOKE_MODE": "response_stream"
+            "AWS_LWA_INVOKE_MODE": "response_stream",
+            "NEXTAUTH_URL": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HostedZoneName"
+                  }
+                ]
+              ]
+            },
+            "NEXTAUTH_SECRET": "{{resolve:secretsmanager:/nextauth/secret:SecretString}}",
+            "NEXTAUTH_COGNITO_CLIENT_ID": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${CognitoStackName}-UserPoolClientId"
+              }
+            },
+            "NEXTAUTH_COGNITO_CLIENT_SECRET": "{{resolve:secretsmanager:/nextauth/cognito/clientSecret:SecretString}}",
+            "NEXTAUTH_COGNITO_ISSUER": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://cognito-idp.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".amazonaws.com/",
+                  {
+                    "Fn::ImportValue": {
+                      "Fn::Sub": "${CognitoStackName}-UserPoolId"
+                    }
+                  }
+                ]
+              ]
+            }
           }
         }
       }
@@ -201,6 +253,11 @@
       "Type": "AWS::CloudFront::Distribution",
       "Properties": {
         "DistributionConfig": {
+          "Aliases": [
+            {
+              "Ref": "HostedZoneName"
+            }
+          ],
           "Origins": [
             {
               "Id": "Origin1",
@@ -242,8 +299,32 @@
           },
           "PriceClass": "PriceClass_200",
           "ViewerCertificate": {
-            "CloudFrontDefaultCertificate": "true"
+            "AcmCertificateArn": {
+              "Ref": "ACMCertificateArn"
+            },
+            "SslSupportMethod": "sni-only"
           }
+        }
+      }
+    },
+    "RecordSet": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
+        },
+        "Name": {
+          "Ref": "HostedZoneName"
+        },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": {
+            "Fn::GetAtt": [
+              "CloudFrontDistribution",
+              "DomainName"
+            ]
+          },
+          "HostedZoneId": "Z2FDTNDATAQYW2"
         }
       }
     }

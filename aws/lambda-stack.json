@@ -2,6 +2,11 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Lambda template to Next.js app",
   "Parameters": {
+    "CognitoStackName": {
+      "Description": "The name of an existing stack for launching the Lambda.",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
     "ECRStackName": {
       "Description": "The name of an existing stack for launching the Lambda.",
       "Type": "String",
@@ -11,6 +16,14 @@
       "Description": "The name of an existing dynamodb stack",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "HostedZoneId": {
+      "Description": "Id of Hostedzone.",
+      "Type": "String"
+    },
+    "HostedZoneName": {
+      "Description": "Name of Hostedzone.",
+      "Type": "String"
     }
   },
   "Resources": {
@@ -137,6 +150,25 @@
         ]
       }
     },
+    "ACMCertificate": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": {
+          "Ref": "HostedZoneName"
+        },
+        "DomainValidationOptions": [
+          {
+            "DomainName": {
+              "Ref": "HostedZoneName"
+            },
+            "HostedZoneId": {
+              "Ref": "HostedZoneId"
+            }
+          }
+        ],
+        "ValidationMethod": "DNS"
+      }
+    },
     "Lambda": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
@@ -162,6 +194,45 @@
             "IAMRoleForLambda",
             "Arn"
           ]
+        },
+        "Environment": {
+          "Variables": {
+            "NEXTAUTH_URL": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HostedZoneName"
+                  }
+                ]
+              ]
+            },
+            "NEXTAUTH_SECRET": "{{resolve:secretsmanager:/nextauth/secret:SecretString}}",
+            "NEXTAUTH_COGNITO_CLIENT_ID": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${CognitoStackName}-UserPoolClientId"
+              }
+            },
+            "NEXTAUTH_COGNITO_CLIENT_SECRET": "{{resolve:secretsmanager:/nextauth/cognito/clientSecret:SecretString}}",
+            "NEXTAUTH_COGNITO_ISSUER": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://cognito-idp.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".amazonaws.com/",
+                  {
+                    "Fn::ImportValue": {
+                      "Fn::Sub": "${CognitoStackName}-UserPoolId"
+                    }
+                  }
+                ]
+              ]
+            }
+          }
         }
       }
     },
@@ -172,6 +243,22 @@
         "ProtocolType": "HTTP"
       }
     },
+    "ApiGatewayDomainName": {
+      "Type": "AWS::ApiGatewayV2::DomainName",
+      "Properties": {
+        "DomainName": {
+          "Ref": "HostedZoneName"
+        },
+        "DomainNameConfigurations": [
+          {
+            "CertificateArn": {
+              "Ref": "ACMCertificate"
+            },
+            "EndpointType": "REGIONAL"
+          }
+        ]
+      }
+    },
     "ApiGatewayStage": {
       "Type": "AWS::ApiGatewayV2::Stage",
       "Properties": {
@@ -180,6 +267,20 @@
         },
         "AutoDeploy": true,
         "StageName": "$default"
+      }
+    },
+    "ApiGatewayApiMapping": {
+      "Type": "AWS::ApiGatewayV2::ApiMapping",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "DomainName": {
+          "Ref": "ApiGatewayDomainName"
+        },
+        "Stage": {
+          "Ref": "ApiGatewayStage"
+        }
       }
     },
     "ApiGatewayRoute": {
@@ -252,6 +353,32 @@
         },
         "SourceArn": {
           "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/$default"
+        }
+      }
+    },
+    "RecordSet": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": {
+          "Ref": "HostedZoneId"
+        },
+        "Name": {
+          "Ref": "HostedZoneName"
+        },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": {
+            "Fn::GetAtt": [
+              "ApiGatewayDomainName",
+              "RegionalDomainName"
+            ]
+          },
+          "HostedZoneId": {
+            "Fn::GetAtt": [
+              "ApiGatewayDomainName",
+              "RegionalHostedZoneId"
+            ]
+          }
         }
       }
     }

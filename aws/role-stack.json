@@ -53,6 +53,7 @@
                   "Effect": "Allow",
                   "Action": [
                     "cognito-idp:*",
+                    "secretsmanager:*",
                     "dynamodb:*"
                   ],
                   "Resource": "*"
@@ -103,6 +104,7 @@
                   "Effect": "Allow",
                   "Action": [
                     "iam:*",
+                    "secretsmanager:*",
                     "ec2:*",
                     "s3:*",
                     "acm:*",
@@ -157,7 +159,9 @@
                   "Effect": "Allow",
                   "Action": [
                     "iam:*",
+                    "secretsmanager:*",
                     "ecr:*",
+                    "logs:*",
                     "ec2:*",
                     "ecs:*",
                     "acm:*",

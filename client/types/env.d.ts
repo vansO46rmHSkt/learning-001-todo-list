@@ -2,9 +2,9 @@ declare module "process" {
   global {
     namespace NodeJS {
       interface ProcessEnv {
-        COGNITO_CLIENT_ID: string;
-        COGNITO_CLIENT_SECRET: string;
-        COGNITO_ISSUER: string;
+        NEXTAUTH_COGNITO_CLIENT_ID: string;
+        NEXTAUTH_COGNITO_CLIENT_SECRET: string;
+        NEXTAUTH_COGNITO_ISSUER: string;
       }
     }
   }

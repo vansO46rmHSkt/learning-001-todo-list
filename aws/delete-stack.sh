@@ -10,6 +10,9 @@ if [ $type = "role" ]; then
 elif [ $type = "cognito" ]; then
   stack_name=$COGNITO_STACK_NAME
   role_arn=$COGNITO_ROLE_ARN
+elif [ $type = "secrets-manager" ]; then
+  stack_name=$SECRETS_MANAGER_STACK_NAME
+  role_arn=$SECRETS_MANAGER_ROLE_ARN
 elif [ $type = "dynamodb" ]; then
   stack_name=$DYNAMODB_STACK_NAME
   role_arn=$DYNAMODB_ROLE_ARN
@@ -32,7 +35,7 @@ elif [ $type = "lambda-function-url" ]; then
   stack_name=$LAMBDA_FUNCTION_URL_STACK_NAME
   role_arn=$LAMBDA_FUNCTION_URL_ROLE_ARN
 else
-  echo "引数にはrole,cognito,dynamodb,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
+  echo "引数にはrole,cognito,secrets-manager,dynamodb,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
   exit 1
 fi
 

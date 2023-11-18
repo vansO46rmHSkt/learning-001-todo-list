@@ -2,6 +2,16 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "ECS template to Next.js app",
   "Parameters": {
+    "CognitoStackName": {
+      "Description": "The name of an existing base stack for launching the ECS.",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "SecretsManagerStackName": {
+      "Description": "The name of an existing base stack for launching the ECS.",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
     "ECRStackName": {
       "Description": "The name of an existing base stack for launching the ECS.",
       "Type": "String",
@@ -90,7 +100,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "temp-nextjs-test-private-subnet2"
+            "Value": "temp-nextjs-test-public-subnet2"
           }
         ]
       }
@@ -159,6 +169,83 @@
         ]
       }
     },
+    "CloudWatchEndpoint": {
+      "Type": "AWS::EC2::VPCEndpoint",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "ServiceName": {
+          "Fn::Sub": "com.amazonaws.${AWS::Region}.logs"
+        },
+        "VpcEndpointType": "Interface",
+        "PrivateDnsEnabled": true,
+        "SubnetIds": [
+          {
+            "Ref": "PublicSubnet1"
+          }
+        ],
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "VPCEndpointSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ]
+      }
+    },
+    "SecretsManagerEndpoint": {
+      "Type": "AWS::EC2::VPCEndpoint",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "ServiceName": {
+          "Fn::Sub": "com.amazonaws.${AWS::Region}.secretsmanager"
+        },
+        "VpcEndpointType": "Interface",
+        "PrivateDnsEnabled": true,
+        "SubnetIds": [
+          {
+            "Ref": "PublicSubnet1"
+          }
+        ],
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "VPCEndpointSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "Access-to-SecretsManager",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": [
+                "secretsmanager:GetSecretValue"
+              ],
+              "Resource": [
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${SecretsManagerStackName}-NextAuthSecretArn"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${SecretsManagerStackName}-CognitoClientSecretArn"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "ECRApiEndpoint": {
       "Type": "AWS::EC2::VPCEndpoint",
       "Properties": {
@@ -194,7 +281,18 @@
                 "ecr:BatchGetImage",
                 "ecr:GetDownloadUrlForLayer",
                 "ecr:BatchCheckLayerAvailability"
-              ]
+              ],
+              "Resource": {
+                "Fn::ImportValue": {
+                  "Fn::Sub": "${ECRStackName}-ECRRepositoryArn"
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "ecr:GetAuthorizationToken",
+              "Resource": "*"
             }
           ]
         }
@@ -223,7 +321,33 @@
           {
             "Ref": "PublicSubnet1"
           }
-        ]
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "Access-to-ECR",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchCheckLayerAvailability"
+              ],
+              "Resource": {
+                "Fn::ImportValue": {
+                  "Fn::Sub": "${ECRStackName}-ECRRepositoryArn"
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "ecr:GetAuthorizationToken",
+              "Resource": "*"
+            }
+          ]
+        }
       }
     },
     "S3VPCEndpoint": {
@@ -472,14 +596,14 @@
         }
       }
     },
-    "IAMRoleForECSTaskExecution": {
+    "IAMRoleForECSTask": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": {
           "Fn::Join": [
             "-",
             [
-              "temp-nextjs-test-for-ecs-task-execution-iam-role",
+              "temp-nextjs-test-for-ecs-task-iam-role",
               {
                 "Ref": "AWS::Region"
               }
@@ -501,52 +625,6 @@
           ]
         },
         "Policies": [
-          {
-            "PolicyName": "AccessToCloudWatch",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": [
-                    "logs:CreateLogGroup",
-                    "logs:CreateLogStream"
-                  ],
-                  "Resource": {
-                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "PolicyName": "ECRGetImage",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": [
-                    "ecr:BatchGetImage",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchCheckLayerAvailability"
-                  ],
-                  "Resource": [
-                    {
-                      "Fn::ImportValue": {
-                        "Fn::Sub": "${ECRStackName}-ECRRepositoryArn"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "ecr:GetAuthorizationToken",
-                  "Resource": "*"
-                }
-              ]
-            }
-          },
           {
             "PolicyName": "DynamoDBAccessPolicy",
             "PolicyDocument": {
@@ -585,6 +663,111 @@
                       ]
                     }
                   ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "IAMRoleForECSTaskExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "temp-nextjs-test-for-ecs-task-execution-iam-role",
+              {
+                "Ref": "AWS::Region"
+              }
+            ]
+          ]
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "AccessToCloudWatch",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "SecretsManagerPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "${SecretsManagerStackName}-NextAuthSecretArn"
+                      }
+                    },
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "${SecretsManagerStackName}-CognitoClientSecretArn"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "ECRGetImage",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchGetImage",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchCheckLayerAvailability"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "${ECRStackName}-ECRRepositoryArn"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
                 }
               ]
             }
@@ -632,6 +815,7 @@
         "LaunchType": "FARGATE",
         "NetworkConfiguration": {
           "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
             "SecurityGroups": [
               {
                 "Fn::GetAtt": [
@@ -665,12 +849,25 @@
         ]
       }
     },
+    "CloudwatchLogsGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "temp-nextjs-test-ecs-cloudwatch-logs-group",
+        "RetentionInDays": 7
+      }
+    },
     "ECSTaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
       "Properties": {
         "NetworkMode": "awsvpc",
         "Cpu": ".25 vCPU",
         "Memory": 512,
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "IAMRoleForECSTask",
+            "Arn"
+          ]
+        },
         "ExecutionRoleArn": {
           "Fn::GetAtt": [
             "IAMRoleForECSTaskExecution",
@@ -701,7 +898,81 @@
               }
             ],
             "Memory": 512,
-            "Essential": true
+            "Essential": true,
+            "Secrets": [
+              {
+                "Name": "NEXTAUTH_SECRET",
+                "ValueFrom": {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${SecretsManagerStackName}-NextAuthSecretArn"
+                  }
+                }
+              },
+              {
+                "Name": "NEXTAUTH_COGNITO_CLIENT_SECRET",
+                "ValueFrom": {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${SecretsManagerStackName}-CognitoClientSecretArn"
+                  }
+                }
+              }
+            ],
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "CloudwatchLogsGroup"
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                },
+                "awslogs-stream-prefix": "ecs"
+              }
+            },
+            "Environment": [
+              {
+                "Name": "NEXTAUTH_URL",
+                "Value": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "https://",
+                      {
+                        "Ref": "HostedZoneName"
+                      }
+                    ]
+                  ]
+                }
+              },
+              {
+                "Name": "NEXTAUTH_COGNITO_CLIENT_ID",
+                "Value": {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${CognitoStackName}-UserPoolClientId"
+                  }
+                }
+              },
+              {
+                "Name": "NEXTAUTH_COGNITO_ISSUER",
+                "Value": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "https://cognito-idp.",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ".amazonaws.com/",
+                      {
+                        "Fn::ImportValue": {
+                          "Fn::Sub": "${CognitoStackName}-UserPoolId"
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
           }
         ]
       }

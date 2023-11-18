@@ -4,7 +4,12 @@
   "Parameters": {
     "UserPoolDomainName": {
       "Type": "String"
+    },
+    "HostedZoneName": {
+      "Description": "Name of Hostedzone.",
+      "Type": "String"
     }
+    
   },
   "Resources": {
     "CognitoUserPool": {
@@ -85,7 +90,18 @@
           "COGNITO"
         ],
         "CallbackURLs": [
-          "http://localhost:3000/api/auth/callback/cognito"
+          {
+            "Fn::Join": [
+              "",
+              [
+                "https://",
+                {
+                  "Ref": "HostedZoneName"
+                },
+                "/api/auth/callback/cognito"
+              ]
+            ]
+          }
         ],
         "AllowedOAuthFlows": [
           "code"
@@ -98,5 +114,26 @@
       }
     }
   },
-  "Outputs": {}
+  "Outputs": {
+    "UserPoolId": {
+      "Value": {
+        "Ref": "CognitoUserPool"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-UserPoolId"
+        }
+      }
+    },
+    "UserPoolClientId": {
+      "Value": {
+        "Ref": "CognitoUserPoolClient"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-UserPoolClientId"
+        }
+      }
+    }
+  }
 }

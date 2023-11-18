@@ -15,8 +15,21 @@ if [ $type = "role" ]; then
 elif [ $type = "cognito" ]; then
   stack_name=$COGNITO_STACK_NAME
   template_body="file://cognito-stack.json"
-  parameters="ParameterKey=UserPoolDomainName,ParameterValue=$USER_POOL_DOMAIN_NAME"
+  parameters="
+    ParameterKey=UserPoolDomainName,ParameterValue=$USER_POOL_DOMAIN_NAME \
+    ParameterKey=HostedZoneName,ParameterValue=$HOSTED_ZONE_NAME"
   role_arn=$COGNITO_ROLE_ARN
+elif [ $type = "secrets-manager" ]; then
+  cognito_user_pool_id=$(aws cloudformation describe-stacks --stack-name $COGNITO_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
+  cognito_user_pool_client_id=$(aws cloudformation describe-stacks --stack-name $COGNITO_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" --output text)
+  cognito_user_pool_client_secret=$(aws cognito-idp describe-user-pool-client --user-pool-id $cognito_user_pool_id --client-id $cognito_user_pool_client_id --region $REGION --query 'UserPoolClient.ClientSecret' --output text)
+
+  stack_name=$SECRETS_MANAGER_STACK_NAME
+  template_body="file://secrets-manager-stack.json"
+  parameters="
+  ParameterKey=NextAuthSecretValue,ParameterValue=$NEXTAUTH_SECRET_VALUE \
+  ParameterKey=CognitoClientSecretValue,ParameterValue=$cognito_user_pool_client_secret"
+  role_arn=$SECRETS_MANAGER_ROLE_ARN
 elif [ $type = "dynamodb" ]; then
   stack_name=$DYNAMODB_STACK_NAME
   template_body="file://dynamodb-stack.json"
@@ -35,6 +48,8 @@ elif [ $type = "ec2" ]; then
   template_body="file://ec2-stack.json"
   parameters="
     ParameterKey=S3AndVpcStackName,ParameterValue=$S3_AND_VPC_STACK_NAME \
+    ParameterKey=CognitoStackName,ParameterValue=$COGNITO_STACK_NAME \
+    ParameterKey=SecretsManagerStackName,ParameterValue=$SECRETS_MANAGER_STACK_NAME \
     ParameterKey=KeyName,ParameterValue=$KEY_NAME \
     ParameterKey=DeployModuleName,ParameterValue=$DEPLOY_MODULE_NAME \
     ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
@@ -52,6 +67,8 @@ elif [ $type = "ecs" ]; then
   stack_name=$ECS_STACK_NAME
   template_body="file://ecs-stack.json"
   parameters="
+    ParameterKey=CognitoStackName,ParameterValue=$COGNITO_STACK_NAME \
+    ParameterKey=SecretsManagerStackName,ParameterValue=$SECRETS_MANAGER_STACK_NAME \
     ParameterKey=ECRStackName,ParameterValue=$ECR_STACK_NAME \
     ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
     ParameterKey=LocalIpAddress,ParameterValue=$(curl -s http://checkip.amazonaws.com/)/32 \
@@ -63,18 +80,25 @@ elif [ $type = "lambda" ]; then
   stack_name=$LAMBDA_STACK_NAME
   template_body="file://lambda-stack.json"
   parameters="
+    ParameterKey=CognitoStackName,ParameterValue=$COGNITO_STACK_NAME \
     ParameterKey=ECRStackName,ParameterValue=$ECR_STACK_NAME \
-    ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME"
+    ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
+    ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
+    ParameterKey=HostedZoneName,ParameterValue=$HOSTED_ZONE_NAME"
   role_arn=$LAMBDA_ROLE_ARN
 elif [ $type = "lambda-function-url" ]; then
   stack_name=$LAMBDA_FUNCTION_URL_STACK_NAME
   template_body="file://lambda-function-url-stack.json"
   parameters="
+    ParameterKey=CognitoStackName,ParameterValue=$COGNITO_STACK_NAME \
+    ParameterKey=ACMCertificateArn,ParameterValue=$ACM_CERTIFICATE_ARN \
     ParameterKey=ECRStackName,ParameterValue=$ECR_STACK_NAME \
-    ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME"
+    ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
+    ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
+    ParameterKey=HostedZoneName,ParameterValue=$HOSTED_ZONE_NAME"
   role_arn=$LAMBDA_FUNCTION_URL_ROLE_ARN
 else
-  echo "引数にはrole,cognito,dynamodb,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
+  echo "引数にはrole,cognito,secrets-manager,dynamodb,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
   exit 1
 fi
 
