@@ -240,7 +240,8 @@
       "Type": "AWS::ApiGatewayV2::Api",
       "Properties": {
         "Name": "temp-nextjs-test-api-gateway",
-        "ProtocolType": "HTTP"
+        "ProtocolType": "HTTP",
+        "DisableExecuteApiEndpoint": true
       }
     },
     "ApiGatewayDomainName": {
