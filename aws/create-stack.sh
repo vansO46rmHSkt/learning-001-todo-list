@@ -35,6 +35,12 @@ elif [ $type = "dynamodb" ]; then
   template_body="file://dynamodb-stack.json"
   parameters=""
   role_arn=$DYNAMODB_ROLE_ARN
+elif [ $type = "open-search-serverless" ]; then
+  stack_name=$OPEN_SEARCH_SERVERLESS_STACK_NAME
+  template_body="file://open-search-serverless-stack.json"
+  parameters="
+    ParameterKey=IAMUser,ParameterValue=$IAM_USER_FOR_OPEN_SEARCH"
+  role_arn=$OPEN_SEARCH_SERVERLESS_ROLE_ARN
 elif [ $type = "s3" ]; then
   stack_name=$S3_AND_VPC_STACK_NAME
   template_body="file://s3-and-vpc-stack.json"
@@ -98,7 +104,7 @@ elif [ $type = "lambda-function-url" ]; then
     ParameterKey=HostedZoneName,ParameterValue=$HOSTED_ZONE_NAME"
   role_arn=$LAMBDA_FUNCTION_URL_ROLE_ARN
 else
-  echo "引数にはrole,cognito,secrets-manager,dynamodb,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
+  echo "引数にはrole,cognito,secrets-manager,dynamodb,open-search-serverless,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
   exit 1
 fi
 

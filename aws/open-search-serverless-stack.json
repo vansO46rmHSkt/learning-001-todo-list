@@ -1,0 +1,72 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for Open Search Serverless",
+  "Parameters": {
+    "IAMUser": {
+      "Type": "String",
+      "Description": "IAM User can access OpenSearch"
+    }
+  },
+  "Resources": {
+    "OpenSearchAccessPolicy": {
+      "Type": "AWS::OpenSearchServerless::AccessPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc-ap",
+        "Policy": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Fn::Sub": "[{\"Rules\":[{\"ResourceType\":\"index\",\"Resource\":[\"index/temp-nextjs-test-osc/*\"],\"Permission\":[\"aoss:*\"]}, {\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"],\"Permission\":[\"aoss:*\"]}], \"Principal\":[\"arn:aws:iam::${AWS::AccountId}:user/"
+              },
+              {
+                "Ref": "IAMUser"
+              },
+              "\"]}]"
+            ]
+          ]
+        },
+        "Type": "data"
+      }
+    },
+    "OpenSearchEncryptionPolicy": {
+      "Type": "AWS::OpenSearchServerless::SecurityPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc-sp",
+        "Policy": "{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]}],\"AWSOwnedKey\":true}",
+        "Type": "encryption"
+      }
+    },
+    "OpenSearchNetworkPolicy": {
+      "Type": "AWS::OpenSearchServerless::SecurityPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc-np",
+        "Policy": "[{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]},{\"ResourceType\":\"dashboard\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]}],\"AllowFromPublic\":true}]",
+        "Type": "network"
+      }
+    },
+    "OpenSearchCollection": {
+      "Type": "AWS::OpenSearchServerless::Collection",
+      "DependsOn": "OpenSearchEncryptionPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc",
+        "Type": "SEARCH"
+      }
+    }
+  },
+  "Outputs": {
+    "OpenSearchDashboardEndpoint": {
+      "Value": {
+        "Fn::GetAtt": [
+          "OpenSearchCollection",
+          "DashboardEndpoint"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-OpenSearchDashboardEndpoint"
+        }
+      }
+    }
+  }
+}

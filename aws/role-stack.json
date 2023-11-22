@@ -54,7 +54,9 @@
                   "Action": [
                     "cognito-idp:*",
                     "secretsmanager:*",
-                    "dynamodb:*"
+                    "dynamodb:*",
+                    "aoss:*",
+                    "iam:*"
                   ],
                   "Resource": "*"
                 }

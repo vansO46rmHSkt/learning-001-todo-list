@@ -16,6 +16,9 @@ elif [ $type = "secrets-manager" ]; then
 elif [ $type = "dynamodb" ]; then
   stack_name=$DYNAMODB_STACK_NAME
   role_arn=$DYNAMODB_ROLE_ARN
+elif [ $type = "open-search-serverless" ]; then
+  stack_name=$OPEN_SEARCH_SERVERLESS_STACK_NAME
+  role_arn=$OPEN_SEARCH_SERVERLESS_ROLE_ARN
 elif [ $type = "s3" ]; then
   stack_name=$S3_AND_VPC_STACK_NAME
   role_arn=$S3_ROLE_ARN
@@ -35,7 +38,7 @@ elif [ $type = "lambda-function-url" ]; then
   stack_name=$LAMBDA_FUNCTION_URL_STACK_NAME
   role_arn=$LAMBDA_FUNCTION_URL_ROLE_ARN
 else
-  echo "引数にはrole,cognito,secrets-manager,dynamodb,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
+  echo "引数にはrole,cognito,secrets-manager,dynamodb,open-search-serverless,s3,ec2,ecr,ecs,lambda,lambda-function-urlのいずれかを指定してください"
   exit 1
 fi
 
