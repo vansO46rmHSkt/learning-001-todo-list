@@ -1,8 +1,8 @@
 {
-    "typescript.tsdk": "./client/node_modules/typescript/lib",
-    "prettier.prettierPath": "./client/node_modules/prettier",
-    "prettier.configPath": "./client/.prettierrc.json",
-    "tailwindCSS.experimental.configFile": "./client/tailwind.config.ts",
+    "typescript.tsdk": "./frontend/node_modules/typescript/lib",
+    "prettier.prettierPath": "./frontend/node_modules/prettier",
+    "prettier.configPath": "./frontend/.prettierrc.json",
+    "tailwindCSS.experimental.configFile": "./frontend/tailwind.config.ts",
     "tailwindCSS.experimental.classRegex": [
         ["Styles \\=([^;]*);", "'([^']*)'"],
         ["Styles \\=([^;]*);", "\"([^\"]*)\""],

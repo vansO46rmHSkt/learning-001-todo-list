@@ -1,5 +1,5 @@
 {
-  "name": "client",
+  "name": "frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -30,5 +30,6 @@
     "prettier-plugin-tailwindcss": "^0.5.7",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.2.2"
-  }
+  },
+  "license": "UNLICENSED"
 }
