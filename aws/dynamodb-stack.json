@@ -104,6 +104,9 @@
         "ProvisionedThroughput": {
           "ReadCapacityUnits": 1,
           "WriteCapacityUnits": 1
+        },
+        "StreamSpecification": {
+          "StreamViewType": "NEW_AND_OLD_IMAGES"
         }
       }
     }
@@ -119,6 +122,19 @@
       "Export": {
         "Name": {
           "Fn::Sub": "${AWS::StackName}-DynamoDBTableArn"
+        }
+      }
+    },
+    "DynamoDBStreamArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DynamoDBTable",
+          "StreamArn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-DynamoDBStreamArn"
         }
       }
     }

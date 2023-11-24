@@ -2,7 +2,8 @@
   "extends": ["@tsconfig/strictest/tsconfig", "@tsconfig/node18/tsconfig"],
   "compilerOptions": {
     "noEmit": true,
-    "sourceMap": false,
+    "sourceMap": false
   },
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "**/*.test.ts"]
 }
