@@ -244,66 +244,6 @@
         "DisableExecuteApiEndpoint": true
       }
     },
-    "ApiGatewayDomainName": {
-      "Type": "AWS::ApiGatewayV2::DomainName",
-      "Properties": {
-        "DomainName": {
-          "Ref": "HostedZoneName"
-        },
-        "DomainNameConfigurations": [
-          {
-            "CertificateArn": {
-              "Ref": "ACMCertificate"
-            },
-            "EndpointType": "REGIONAL"
-          }
-        ]
-      }
-    },
-    "ApiGatewayStage": {
-      "Type": "AWS::ApiGatewayV2::Stage",
-      "Properties": {
-        "ApiId": {
-          "Ref": "ApiGateway"
-        },
-        "AutoDeploy": true,
-        "StageName": "$default"
-      }
-    },
-    "ApiGatewayApiMapping": {
-      "Type": "AWS::ApiGatewayV2::ApiMapping",
-      "Properties": {
-        "ApiId": {
-          "Ref": "ApiGateway"
-        },
-        "DomainName": {
-          "Ref": "ApiGatewayDomainName"
-        },
-        "Stage": {
-          "Ref": "ApiGatewayStage"
-        }
-      }
-    },
-    "ApiGatewayRoute": {
-      "Type": "AWS::ApiGatewayV2::Route",
-      "Properties": {
-        "ApiId": {
-          "Ref": "ApiGateway"
-        },
-        "RouteKey": "$default",
-        "Target": {
-          "Fn::Join": [
-            "/",
-            [
-              "integrations",
-              {
-                "Ref": "ApiGatewayIntegration"
-              }
-            ]
-          ]
-        }
-      }
-    },
     "ApiGatewayIntegration": {
       "Type": "AWS::ApiGatewayV2::Integration",
       "Properties": {
@@ -335,6 +275,66 @@
               "/invocations"
             ]
           ]
+        }
+      }
+    },
+    "ApiGatewayRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "RouteKey": "$default",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "ApiGatewayIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "ApiGatewayStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "AutoDeploy": false,
+        "StageName": "$default"
+      }
+    },
+    "ApiGatewayDomainName": {
+      "Type": "AWS::ApiGatewayV2::DomainName",
+      "Properties": {
+        "DomainName": {
+          "Ref": "HostedZoneName"
+        },
+        "DomainNameConfigurations": [
+          {
+            "CertificateArn": {
+              "Ref": "ACMCertificate"
+            },
+            "EndpointType": "REGIONAL"
+          }
+        ]
+      }
+    },
+    "ApiGatewayApiMapping": {
+      "Type": "AWS::ApiGatewayV2::ApiMapping",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ApiGateway"
+        },
+        "DomainName": {
+          "Ref": "ApiGatewayDomainName"
+        },
+        "Stage": {
+          "Ref": "ApiGatewayStage"
         }
       }
     },
