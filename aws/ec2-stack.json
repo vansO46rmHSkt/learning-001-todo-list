@@ -2,7 +2,12 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Template for launching an EC2 instance to run the Next.js app.",
   "Parameters": {
-    "S3AndVpcStackName": {
+    "S3StackName": {
+      "Description": "The name of an existing stack for launching the EC2 instance.",
+      "Type": "String",
+      "ConstraintDescription": "must be the name of an existing stack name."
+    },
+    "VPCStackName": {
       "Description": "The name of an existing stack for launching the EC2 instance.",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
@@ -88,7 +93,7 @@
                           "arn:aws:s3:::",
                           {
                             "Fn::ImportValue": {
-                              "Fn::Sub": "${S3AndVpcStackName}-S3Bucket"
+                              "Fn::Sub": "${S3StackName}-S3Bucket"
                             }
                           },
                           "/*"
@@ -108,7 +113,7 @@
                           "arn:aws:s3:::",
                           {
                             "Fn::ImportValue": {
-                              "Fn::Sub": "${S3AndVpcStackName}-S3Bucket"
+                              "Fn::Sub": "${S3StackName}-S3Bucket"
                             }
                           }
                         ]
@@ -211,13 +216,13 @@
             "DeviceIndex": "0",
             "SubnetId": {
               "Fn::ImportValue": {
-                "Fn::Sub": "${S3AndVpcStackName}-PublicSubnet1"
+                "Fn::Sub": "${VPCStackName}-PublicSubnet1"
               }
             },
             "GroupSet": [
               {
                 "Fn::ImportValue": {
-                  "Fn::Sub": "${S3AndVpcStackName}-EC2SecurityGroupId"
+                  "Fn::Sub": "${VPCStackName}-EC2SecurityGroupId"
                 }
               }
             ]
@@ -231,7 +236,7 @@
             "Fn::Join": [
               "\n",
               [
-                "#!/bin/bash -euxo pipefail",
+                "#!/bin/bash -ex",
                 "sudo apt update -y",
                 "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash",
                 "export NVM_DIR=\"$HOME/.nvm\"",
@@ -247,7 +252,7 @@
                       "aws s3 cp s3://",
                       {
                         "Fn::ImportValue": {
-                          "Fn::Sub": "${S3AndVpcStackName}-S3Bucket"
+                          "Fn::Sub": "${S3StackName}-S3Bucket"
                         }
                       },
                       "/",
@@ -269,7 +274,7 @@
                       {
                         "Ref": "DeployModuleName"
                       },
-                      "&& rm ",
+                      " && rm ",
                       {
                         "Ref": "DeployModuleName"
                       }
@@ -398,19 +403,19 @@
         "SecurityGroups": [
           {
             "Fn::ImportValue": {
-              "Fn::Sub": "${S3AndVpcStackName}-ELBSecurityGroupId"
+              "Fn::Sub": "${VPCStackName}-ELBSecurityGroupId"
             }
           }
         ],
         "Subnets": [
           {
             "Fn::ImportValue": {
-              "Fn::Sub": "${S3AndVpcStackName}-PublicSubnet1"
+              "Fn::Sub": "${VPCStackName}-PublicSubnet1"
             }
           },
           {
             "Fn::ImportValue": {
-              "Fn::Sub": "${S3AndVpcStackName}-PublicSubnet2"
+              "Fn::Sub": "${VPCStackName}-PublicSubnet2"
             }
           }
         ],
@@ -430,7 +435,7 @@
         "Protocol": "HTTP",
         "VpcId": {
           "Fn::ImportValue": {
-            "Fn::Sub": "${S3AndVpcStackName}-VPC"
+            "Fn::Sub": "${VPCStackName}-VPC"
           }
         },
         "TargetType": "instance",

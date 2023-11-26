@@ -2,14 +2,6 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Template for creating roles, VPC, and S3 to launch EC2 instances.",
   "Parameters": {
-    "GithubUserName": {
-      "Description": "Name of Github user.",
-      "Type": "String"
-    },
-    "GithubRepositoryName": {
-      "Description": "Name of Github repository.",
-      "Type": "String"
-    },
     "LocalIpAddress": {
       "Description": "The IP address that can be used to SSH to the EC2 instances",
       "Type": "String",
@@ -21,18 +13,6 @@
     }
   },
   "Resources": {
-    "OIDCProvider": {
-      "Type": "AWS::IAM::OIDCProvider",
-      "Properties": {
-        "Url": "https://token.actions.githubusercontent.com",
-        "ClientIdList": [
-          "sts.amazonaws.com"
-        ],
-        "ThumbprintList": [
-          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        ]
-      }
-    },
     "VPC": {
       "Type": "AWS::EC2::VPC",
       "Properties": {
@@ -41,110 +21,6 @@
           {
             "Key": "Name",
             "Value": "temp-nextjs-test-vpc"
-          }
-        ]
-      }
-    },
-    "S3Bucket": {
-      "Type": "AWS::S3::Bucket",
-      "Properties": {
-        "BucketName": "temp-nextjs-test-s3",
-        "PublicAccessBlockConfiguration": {
-          "BlockPublicAcls": true,
-          "BlockPublicPolicy": false,
-          "IgnorePublicAcls": true,
-          "RestrictPublicBuckets": false
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "temp-nextjs-test-s3"
-          }
-        ]
-      }
-    },
-    "IAMRoleForS3Deploy": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "RoleName": {
-          "Fn::Join": [
-            "-",
-            [
-              "temp-nextjs-test-s3-deploy-iam-role",
-              {
-                "Ref": "AWS::Region"
-              }
-            ]
-          ]
-        },
-        "AssumeRolePolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "sts:AssumeRoleWithWebIdentity"
-              ],
-              "Principal": {
-                "Federated": {
-                  "Ref": "OIDCProvider"
-                }
-              },
-              "Condition": {
-                "StringLike": {
-                  "token.actions.githubusercontent.com:sub": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "repo:",
-                        {
-                          "Ref": "GithubUserName"
-                        },
-                        "/",
-                        {
-                          "Ref": "GithubRepositoryName"
-                        },
-                        ":ref:refs/heads/master"
-                      ]
-                    ]
-                  }
-                }
-              }
-            }
-          ]
-        },
-        "Policies": [
-          {
-            "PolicyName": "S3PutObjectPolicy",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": "s3:PutObject",
-                  "Resource": [
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          "arn:aws:s3:::",
-                          {
-                            "Ref": "S3Bucket"
-                          },
-                          "/*"
-                        ]
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        ],
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "temp-nextjs-test-s3-deploy-iam-role"
           }
         ]
       }
@@ -164,64 +40,6 @@
             "Ref": "PublicRouteTable"
           }
         ]
-      }
-    },
-    "S3BucketPolicy": {
-      "Type": "AWS::S3::BucketPolicy",
-      "Properties": {
-        "Bucket": {
-          "Ref": "S3Bucket"
-        },
-        "PolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Deny",
-              "Action": "s3:*",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:aws:s3:::",
-                    {
-                      "Ref": "S3Bucket"
-                    },
-                    "/*"
-                  ]
-                ]
-              },
-              "Condition": {
-                "StringNotEquals": {
-                  "aws:SourceVpce": {
-                    "Ref": "VPCEndpoint"
-                  }
-                },
-                "StringNotLike": {
-                  "aws:userId": [
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          {
-                            "Fn::GetAtt": [
-                              "IAMRoleForS3Deploy",
-                              "RoleId"
-                            ]
-                          },
-                          ":*"
-                        ]
-                      ]
-                    },
-                    {
-                      "Ref": "AWS::AccountId"
-                    }
-                  ]
-                }
-              },
-              "Principal": "*"
-            }
-          ]
-        }
       }
     },
     "PublicSubnet1": {
@@ -407,16 +225,6 @@
     }
   },
   "Outputs": {
-    "S3Bucket": {
-      "Value": {
-        "Ref": "S3Bucket"
-      },
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-S3Bucket"
-        }
-      }
-    },
     "VPC": {
       "Value": {
         "Ref": "VPC"
@@ -470,19 +278,6 @@
       "Export": {
         "Name": {
           "Fn::Sub": "${AWS::StackName}-EC2SecurityGroupId"
-        }
-      }
-    },
-    "IAMRoleForS3DeployArn": {
-      "Value": {
-        "Fn::GetAtt": [
-          "IAMRoleForS3Deploy",
-          "Arn"
-        ]
-      },
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-IAMRoleForS3DeployArn"
         }
       }
     }

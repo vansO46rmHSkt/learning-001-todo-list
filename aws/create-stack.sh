@@ -42,18 +42,24 @@ elif [ $type = "open-search-serverless" ]; then
     ParameterKey=IAMUser,ParameterValue=$IAM_USER_FOR_OPEN_SEARCH"
   role_arn=$OPEN_SEARCH_SERVERLESS_ROLE_ARN
 elif [ $type = "s3" ]; then
-  stack_name=$S3_AND_VPC_STACK_NAME
-  template_body="file://s3-and-vpc-stack.json"
+  stack_name=$S3_STACK_NAME
+  template_body="file://s3-stack.json"
   parameters="
     ParameterKey=GithubUserName,ParameterValue=$GITHUB_USER_NAME \
-    ParameterKey=GithubRepositoryName,ParameterValue=$GITHUB_REPOSITORY_NAME \
-    ParameterKey=LocalIpAddress,ParameterValue=$(curl -s http://checkip.amazonaws.com/)/32"
+    ParameterKey=GithubRepositoryName,ParameterValue=$GITHUB_REPOSITORY_NAME"
   role_arn=$S3_ROLE_ARN
+elif [ $type = "vpc" ]; then
+  stack_name=$VPC_STACK_NAME
+  template_body="file://vpc-stack.json"
+  parameters="
+    ParameterKey=LocalIpAddress,ParameterValue=$(curl -s http://checkip.amazonaws.com/)/32"
+  role_arn=$VPC_ROLE_ARN
 elif [ $type = "ec2" ]; then
   stack_name=$EC2_STACK_NAME
   template_body="file://ec2-stack.json"
   parameters="
-    ParameterKey=S3AndVpcStackName,ParameterValue=$S3_AND_VPC_STACK_NAME \
+    ParameterKey=S3StackName,ParameterValue=$S3_STACK_NAME \
+    ParameterKey=VPCStackName,ParameterValue=$VPC_STACK_NAME \
     ParameterKey=CognitoStackName,ParameterValue=$COGNITO_STACK_NAME \
     ParameterKey=SecretsManagerStackName,ParameterValue=$SECRETS_MANAGER_STACK_NAME \
     ParameterKey=KeyName,ParameterValue=$KEY_NAME \
@@ -61,7 +67,7 @@ elif [ $type = "ec2" ]; then
     ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
     ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
     ParameterKey=HostedZoneName,ParameterValue=$HOSTED_ZONE_NAME"
-  role_arn=$EC2_ROLE_ARN
+  role_arn=$VPC_ROLE_ARN
 elif [ $type = "ecr" ]; then
   stack_name=$ECR_STACK_NAME
   template_body="file://ecr-stack.json"
