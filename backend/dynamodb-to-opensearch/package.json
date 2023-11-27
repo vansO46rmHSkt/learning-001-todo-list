@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "rm -rf dist && node --require esbuild-register build.ts && cd dist && zip -r index.zip index.js"
+    "build": "rm -rf dist && node --require esbuild-register build.ts && cd dist && zip -r index.zip index.mjs"
   },
   "license": "UNLICENSED",
   "devDependencies": {
