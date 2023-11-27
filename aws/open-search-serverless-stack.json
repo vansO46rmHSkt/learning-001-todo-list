@@ -14,6 +14,59 @@
     }
   },
   "Resources": {
+    "OpenSearchAccessPolicy": {
+      "Type": "AWS::OpenSearchServerless::AccessPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc-ap",
+        "Policy": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Fn::Sub": "[{\"Rules\":[{\"ResourceType\":\"index\",\"Resource\":[\"index/temp-nextjs-test-osc/*\"],\"Permission\":[\"aoss:*\"]}, {\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"],\"Permission\":[\"aoss:*\"]}], \"Principal\":[\"arn:aws:iam::${AWS::AccountId}:role/"
+              },
+              {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "temp-nextjs-test-for-lambda-for-d2o-iam-role",
+                    {
+                      "Ref": "AWS::Region"
+                    }
+                  ]
+                ]
+              },
+              "\"]}]"
+            ]
+          ]
+        },
+        "Type": "data"
+      }
+    },
+    "OpenSearchEncryptionPolicy": {
+      "Type": "AWS::OpenSearchServerless::SecurityPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc-sp",
+        "Policy": "{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]}],\"AWSOwnedKey\":true}",
+        "Type": "encryption"
+      }
+    },
+    "OpenSearchNetworkPolicy": {
+      "Type": "AWS::OpenSearchServerless::SecurityPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc-np",
+        "Policy": "[{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]},{\"ResourceType\":\"dashboard\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]}],\"AllowFromPublic\":true}]",
+        "Type": "network"
+      }
+    },
+    "OpenSearchCollection": {
+      "Type": "AWS::OpenSearchServerless::Collection",
+      "DependsOn": "OpenSearchEncryptionPolicy",
+      "Properties": {
+        "Name": "temp-nextjs-test-osc",
+        "Type": "SEARCH"
+      }
+    },
     "IAMRoleForLambda": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -21,7 +74,7 @@
           "Fn::Join": [
             "-",
             [
-              "temp-nextjs-test-for-lambda-for-dynamodb-to-opensearch-iam-role",
+              "temp-nextjs-test-for-lambda-for-d2o-iam-role",
               {
                 "Ref": "AWS::Region"
               }
@@ -71,29 +124,19 @@
             }
           },
           {
-            "PolicyName": "S3GetObjectAccess",
+            "PolicyName": "AccessToOpenSearch",
             "PolicyDocument": {
               "Version": "2012-10-17",
               "Statement": [
                 {
                   "Effect": "Allow",
-                  "Action": [
-                    "s3:GetObject"
-                  ],
-                  "Resource": [
-                    {
-                      "Fn::Sub": [
-                        "${S3Bucket}/*",
-                        {
-                          "S3Bucket": {
-                            "Fn::ImportValue": {
-                              "Fn::Sub": "${S3StackName}-S3Bucket"
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  ]
+                  "Action": "aoss:APIAccessAll",
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "OpenSearchCollection",
+                      "Arn"
+                    ]
+                  }
                 }
               ]
             }
@@ -125,51 +168,6 @@
         ]
       }
     },
-    "OpenSearchAccessPolicy": {
-      "Type": "AWS::OpenSearchServerless::AccessPolicy",
-      "Properties": {
-        "Name": "temp-nextjs-test-osc-ap",
-        "Policy": {
-          "Fn::Join": [
-            "",
-            [
-              {
-                "Fn::Sub": "[{\"Rules\":[{\"ResourceType\":\"index\",\"Resource\":[\"index/temp-nextjs-test-osc/*\"],\"Permission\":[\"aoss:*\"]}, {\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"],\"Permission\":[\"aoss:*\"]}], \"Principal\":[\"arn:aws:iam::${AWS::AccountId}:user/"
-              },
-              {
-                "Ref": "IAMRoleForLambda"
-              },
-              "\"]}]"
-            ]
-          ]
-        },
-        "Type": "data"
-      }
-    },
-    "OpenSearchEncryptionPolicy": {
-      "Type": "AWS::OpenSearchServerless::SecurityPolicy",
-      "Properties": {
-        "Name": "temp-nextjs-test-osc-sp",
-        "Policy": "{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]}],\"AWSOwnedKey\":true}",
-        "Type": "encryption"
-      }
-    },
-    "OpenSearchNetworkPolicy": {
-      "Type": "AWS::OpenSearchServerless::SecurityPolicy",
-      "Properties": {
-        "Name": "temp-nextjs-test-osc-np",
-        "Policy": "[{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]},{\"ResourceType\":\"dashboard\",\"Resource\":[\"collection/temp-nextjs-test-osc\"]}],\"AllowFromPublic\":true}]",
-        "Type": "network"
-      }
-    },
-    "OpenSearchCollection": {
-      "Type": "AWS::OpenSearchServerless::Collection",
-      "DependsOn": "OpenSearchEncryptionPolicy",
-      "Properties": {
-        "Name": "temp-nextjs-test-osc",
-        "Type": "SEARCH"
-      }
-    },
     "Lambda": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
@@ -181,7 +179,7 @@
               "Fn::Sub": "${S3StackName}-S3Bucket"
             }
           },
-          "S3Key": "dynamodb-to-opensearch.zip"
+          "S3Key": "index.zip"
         },
         "Handler": "index.handler",
         "Runtime": "nodejs18.x",
@@ -202,21 +200,24 @@
           ]
         }
       }
-    }
-  },
-  "Outputs": {
-    "OpenSearchDashboardEndpoint": {
-      "Value": {
-        "Fn::GetAtt": [
-          "OpenSearchCollection",
-          "DashboardEndpoint"
-        ]
-      },
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-OpenSearchDashboardEndpoint"
-        }
+    },
+    "LambdaEventSourceMapping": {
+      "Type": "AWS::Lambda::EventSourceMapping",
+      "Properties": {
+        "EventSourceArn": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "${DynamoDBStackName}-DynamoDBStreamArn"
+          }
+        },
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "Lambda",
+            "Arn"
+          ]
+        },
+        "StartingPosition": "TRIM_HORIZON"
       }
     }
-  }
+  },
+  "Outputs": {}
 }

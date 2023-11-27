@@ -40,7 +40,8 @@ create-stack() {
     stack_name=$OPEN_SEARCH_SERVERLESS_STACK_NAME
     template_body="file://open-search-serverless-stack.json"
     parameters="
-      ParameterKey=IAMUser,ParameterValue=$IAM_USER_FOR_OPEN_SEARCH"
+      ParameterKey=DynamoDBStackName,ParameterValue=$DYNAMODB_STACK_NAME \
+      ParameterKey=S3StackName,ParameterValue=$S3_STACK_NAME"
     role_arn=$OPEN_SEARCH_SERVERLESS_ROLE_ARN
   elif [ $type = "s3" ]; then
     stack_name=$S3_STACK_NAME

@@ -16,17 +16,19 @@ const client = new Client({
 });
 
 export const handler: Handler = async (event: DynamoDBStreamEvent) => {
+  console.log("Received event:", JSON.stringify(event, null, 2));
   for (const record of event.Records) {
     if (
       !record.eventName ||
-      !record.dynamodb?.Keys?.["partitionKey"]?.S ||
-      !record.dynamodb?.Keys?.["sortKey"]?.S
+      !record.dynamodb?.Keys?.["PK_GSI1PK_GSI3PK"]?.S ||
+      !record.dynamodb?.Keys?.["SK"]?.S
     ) {
+      console.log("Skipping invalid record");
       continue;
     }
 
-    const { partitionKey, sortKey } = record.dynamodb.Keys;
-    const id = `${partitionKey.S}#${sortKey.S}`;
+    const { PK_GSI1PK_GSI3PK, SK } = record.dynamodb.Keys;
+    const id = `${PK_GSI1PK_GSI3PK.S}#${SK.S}`;
     switch (record.eventName) {
       case "INSERT":
       case "MODIFY": {

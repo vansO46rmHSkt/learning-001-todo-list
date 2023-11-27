@@ -7,7 +7,7 @@ esbuild
     minify: true,
     outfile: "./dist/index.js",
     platform: "node",
-    format: "esm",
+    target: "node18",
   })
   .catch((err) => {
     process.stderr.write(err.stderr);
