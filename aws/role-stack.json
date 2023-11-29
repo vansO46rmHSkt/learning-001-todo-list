@@ -53,6 +53,7 @@
                   "Effect": "Allow",
                   "Action": [
                     "cognito-idp:*",
+                    "cognito-identity:*",
                     "secretsmanager:*",
                     "dynamodb:*",
                     "iam:*"

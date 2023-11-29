@@ -12,7 +12,7 @@
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
     },
-    "CognitoStackName": {
+    "CognitoUserPoolStackName": {
       "Description": "The name of an existing base stack for launching the EC2.",
       "Type": "String",
       "ConstraintDescription": "must be the name of an existing stack name."
@@ -325,7 +325,7 @@
                       "export NEXTAUTH_COGNITO_CLIENT_ID=",
                       {
                         "Fn::ImportValue": {
-                          "Fn::Sub": "${CognitoStackName}-UserPoolClientId"
+                          "Fn::Sub": "${CognitoUserPoolStackName}-UserPoolClientId"
                         }
                       }
                     ]
@@ -350,7 +350,7 @@
                       ".amazonaws.com/",
                       {
                         "Fn::ImportValue": {
-                          "Fn::Sub": "${CognitoStackName}-UserPoolId"
+                          "Fn::Sub": "${CognitoUserPoolStackName}-UserPoolId"
                         }
                       }
                     ]

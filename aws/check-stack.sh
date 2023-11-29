@@ -25,7 +25,6 @@ if [ "$2" == "watch" ]; then
     done
   done
 elif [ "$1" == "all" ]; then
-  all_types=("role" "cognito" "secrets-manager" "dynamodb" "open-search-serverless" "s3" "vpc" "ec2" "ecr" "ecs" "lambda-with-http-api-gateway" "lambda-with-rest-api-gateway" "lambda-function-url")
   for type in "${all_types[@]}"; do
     check-stack-status "$type"
   done

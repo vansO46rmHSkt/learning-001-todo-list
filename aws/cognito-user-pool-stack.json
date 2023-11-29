@@ -9,7 +9,6 @@
       "Description": "Name of Hostedzone.",
       "Type": "String"
     }
-    
   },
   "Resources": {
     "CognitoUserPool": {
@@ -132,6 +131,19 @@
       "Export": {
         "Name": {
           "Fn::Sub": "${AWS::StackName}-UserPoolClientId"
+        }
+      }
+    },
+    "UserPoolProviderName": {
+      "Value": {
+        "Fn::GetAtt": [
+          "CognitoUserPool",
+          "ProviderName"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-UserPoolProviderName"
         }
       }
     }
