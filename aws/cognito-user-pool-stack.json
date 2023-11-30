@@ -61,6 +61,15 @@
         }
       }
     },
+    "CognitoUserPoolAdminGroup": {
+      "Type": "AWS::Cognito::UserPoolGroup",
+      "Properties": {
+        "GroupName": "admin",
+        "UserPoolId": {
+          "Ref": "CognitoUserPool"
+        }
+      }
+    },
     "CognitoUserPoolDomain": {
       "Type": "AWS::Cognito::UserPoolDomain",
       "Properties": {

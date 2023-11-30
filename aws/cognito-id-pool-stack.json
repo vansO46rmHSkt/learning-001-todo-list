@@ -11,6 +11,7 @@
     "IdentityPool": {
       "Type": "AWS::Cognito::IdentityPool",
       "Properties": {
+        "IdentityPoolName": "temp-nextjs-test-id-pool",
         "AllowUnauthenticatedIdentities": false,
         "CognitoIdentityProviders": [
           {
@@ -79,10 +80,9 @@
                 {
                   "Effect": "Allow",
                   "Action": [
-                    "s3:GetObject",
-                    "s3:PutObject"
+                    "s3:GetObject"
                   ],
-                  "Resource": "arn:aws:s3:::*-${aws:PrincipalTag/user_id}/*"
+                  "Resource": "arn:aws:s3:::temp-nextjs-test-s3/outputs/${aws:PrincipalTag/user_id}"
                 }
               ]
             }
@@ -126,7 +126,7 @@
                   "Action": [
                     "s3:GetObject"
                   ],
-                  "Resource": "arn:aws:s3:::*/*"
+                  "Resource": "arn:aws:s3:::temp-nextjs-test-s3/outputs/*"
                 }
               ]
             }
