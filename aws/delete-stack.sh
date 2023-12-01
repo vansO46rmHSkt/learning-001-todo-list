@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 source ./common-function.sh
 
@@ -14,9 +16,9 @@ for type in ${types[@]}; do
   while true; do
     result=$(check-stack-status $type)
     is_deleting=$(echo $result | grep DELETE_IN_PROGRESS || [[ $? == 1 ]])
-    if [ -z "$is_deleting" ]; then
+    if [[ -z "$is_deleting" ]]; then
       is_deleted=$(echo $result | grep "does not exist" || [[ $? == 1 ]])
-      if [ -n "$is_deleted" ]; then
+      if [[ -n "$is_deleted" ]]; then
         echo "${type} is deleted"
       else
         echo "${type} deletion failed"
