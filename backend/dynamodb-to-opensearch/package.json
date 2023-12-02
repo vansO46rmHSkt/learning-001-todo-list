@@ -5,7 +5,7 @@
   "scripts": {
     "build": "rm -rf dist && node --require esbuild-register build.ts && cd dist && zip -r index.zip index.mjs"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "devDependencies": {
     "@tsconfig/node18": "^18.2.2",
     "@tsconfig/strictest": "^2.0.2",
