@@ -202,172 +202,196 @@
         ]
       }
     },
+    "EC2LaunchTemplate": {
+      "Type": "AWS::EC2::LaunchTemplate",
+      "Properties": {
+        "LaunchTemplateName": "temp-nextjs-test-launch-template",
+        "LaunchTemplateData": {
+          "ImageId": "ami-09a81b370b76de6a2",
+          "InstanceType": "t2.micro",
+          "KeyName": {
+            "Ref": "KeyName"
+          },
+          "NetworkInterfaces": [
+            {
+              "AssociatePublicIpAddress": "true",
+              "DeviceIndex": "0",
+              "SubnetId": {
+                "Fn::ImportValue": {
+                  "Fn::Sub": "${VPCStackName}-PublicSubnet1"
+                }
+              },
+              "Groups": [
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${VPCStackName}-EC2SecurityGroupId"
+                  }
+                }
+              ]
+            }
+          ],
+          "IamInstanceProfile": {
+            "Arn": {
+              "Fn::GetAtt": [
+                "IAMInstanceProfile",
+                "Arn"
+              ]
+            }
+          },
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Join": [
+                "\n",
+                [
+                  "#!/bin/bash -ex",
+                  "sudo apt update -y",
+                  "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash",
+                  "export NVM_DIR=\"$HOME/.nvm\"",
+                  "[ -s \"$NVM_DIR/nvm.sh\" ] && \\. \"$NVM_DIR/nvm.sh\"",
+                  "nvm install --lts",
+                  "node -e \"console.log('Running Node.js ' + process.version)\"",
+                  "sudo apt install -y awscli",
+                  "mkdir /app && cd /app",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws s3 cp s3://",
+                        {
+                          "Fn::ImportValue": {
+                            "Fn::Sub": "${S3StackName}-S3Bucket"
+                          }
+                        },
+                        "/",
+                        {
+                          "Ref": "DeployModuleName"
+                        },
+                        " ./",
+                        {
+                          "Ref": "DeployModuleName"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "tar zxf ",
+                        {
+                          "Ref": "DeployModuleName"
+                        },
+                        " && rm ",
+                        {
+                          "Ref": "DeployModuleName"
+                        }
+                      ]
+                    ]
+                  },
+                  "sudo apt install -y nginx",
+                  "cat <<EOF > /etc/nginx/sites-available/temp-nextjs-test",
+                  "server {",
+                  "    listen 80 default_server;",
+                  "    listen [::]:80 default_server;",
+                  "    server_name _;",
+                  "    location / {",
+                  "        proxy_pass http://localhost:3000;",
+                  "    }",
+                  "}",
+                  "EOF",
+                  "ln -s /etc/nginx/sites-available/temp-nextjs-test /etc/nginx/sites-enabled/",
+                  "rm /etc/nginx/sites-enabled/default",
+                  "sudo systemctl restart nginx",
+                  {
+                    "Fn::Sub": "export AWS_REGION=${AWS::Region}"
+                  },
+                  "echo AWS_REGION=${AWS_REGION} >> /etc/environment",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "export NEXTAUTH_URL=",
+                        "https://",
+                        {
+                          "Ref": "HostedZoneName"
+                        }
+                      ]
+                    ]
+                  },
+                  "echo NEXTAUTH_URL=${NEXTAUTH_URL} >> /etc/environment",
+                  "set +x",
+                  {
+                    "Fn::Sub": "export NEXTAUTH_SECRET=$(aws secretsmanager get-secret-value --region ${AWS::Region} --secret-id '/nextauth/secret' --query 'SecretString' --output text) "
+                  },
+                  "echo NEXTAUTH_SECRET=${NEXTAUTH_SECRET} >> /etc/environment",
+                  "set -x",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "export NEXTAUTH_COGNITO_CLIENT_ID=",
+                        {
+                          "Fn::ImportValue": {
+                            "Fn::Sub": "${CognitoUserPoolStackName}-UserPoolClientId"
+                          }
+                        }
+                      ]
+                    ]
+                  },
+                  "echo NEXTAUTH_COGNITO_CLIENT_ID=${NEXTAUTH_COGNITO_CLIENT_ID} >> /etc/environment",
+                  "set +x",
+                  {
+                    "Fn::Sub": "export NEXTAUTH_COGNITO_CLIENT_SECRET=$(aws secretsmanager get-secret-value --region ${AWS::Region} --secret-id '/nextauth/cognito/clientSecret' --query 'SecretString' --output text)"
+                  },
+                  "echo NEXTAUTH_COGNITO_CLIENT_SECRET=${NEXTAUTH_COGNITO_CLIENT_SECRET} >> /etc/environment",
+                  "set -x",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "export NEXTAUTH_COGNITO_ISSUER=",
+                        "https://cognito-idp.",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ".amazonaws.com/",
+                        {
+                          "Fn::ImportValue": {
+                            "Fn::Sub": "${CognitoUserPoolStackName}-UserPoolId"
+                          }
+                        }
+                      ]
+                    ]
+                  },
+                  "echo NEXTAUTH_COGNITO_ISSUER=${NEXTAUTH_COGNITO_ISSUER} >> /etc/environment",
+                  "node server.js >> /var/log/node.log 2>&1 &"
+                ]
+              ]
+            }
+          },
+          "MetadataOptions": {
+            "HttpTokens": "required"
+          }
+        }
+      }
+    },
     "EC2Instance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
-        "InstanceType": "t2.micro",
-        "ImageId": "ami-09a81b370b76de6a2",
-        "KeyName": {
-          "Ref": "KeyName"
-        },
-        "NetworkInterfaces": [
-          {
-            "AssociatePublicIpAddress": "true",
-            "DeviceIndex": "0",
-            "SubnetId": {
-              "Fn::ImportValue": {
-                "Fn::Sub": "${VPCStackName}-PublicSubnet1"
-              }
-            },
-            "GroupSet": [
-              {
-                "Fn::ImportValue": {
-                  "Fn::Sub": "${VPCStackName}-EC2SecurityGroupId"
-                }
-              }
+        "LaunchTemplate": {
+          "LaunchTemplateId": {
+            "Fn::GetAtt": [
+              "EC2LaunchTemplate",
+              "LaunchTemplateId"
+            ]
+          },
+          "Version": {
+            "Fn::GetAtt": [
+              "EC2LaunchTemplate",
+              "LatestVersionNumber"
             ]
           }
-        ],
-        "IamInstanceProfile": {
-          "Ref": "IAMInstanceProfile"
-        },
-        "UserData": {
-          "Fn::Base64": {
-            "Fn::Join": [
-              "\n",
-              [
-                "#!/bin/bash -ex",
-                "sudo apt update -y",
-                "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash",
-                "export NVM_DIR=\"$HOME/.nvm\"",
-                "[ -s \"$NVM_DIR/nvm.sh\" ] && \\. \"$NVM_DIR/nvm.sh\"",
-                "nvm install --lts",
-                "node -e \"console.log('Running Node.js ' + process.version)\"",
-                "sudo apt install -y awscli",
-                "mkdir /app && cd /app",
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "aws s3 cp s3://",
-                      {
-                        "Fn::ImportValue": {
-                          "Fn::Sub": "${S3StackName}-S3Bucket"
-                        }
-                      },
-                      "/",
-                      {
-                        "Ref": "DeployModuleName"
-                      },
-                      " ./",
-                      {
-                        "Ref": "DeployModuleName"
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "tar zxf ",
-                      {
-                        "Ref": "DeployModuleName"
-                      },
-                      " && rm ",
-                      {
-                        "Ref": "DeployModuleName"
-                      }
-                    ]
-                  ]
-                },
-                "sudo apt install -y nginx",
-                "cat <<EOF > /etc/nginx/sites-available/temp-nextjs-test",
-                "server {",
-                "    listen 80 default_server;",
-                "    listen [::]:80 default_server;",
-                "    server_name _;",
-                "    location / {",
-                "        proxy_pass http://localhost:3000;",
-                "    }",
-                "}",
-                "EOF",
-                "ln -s /etc/nginx/sites-available/temp-nextjs-test /etc/nginx/sites-enabled/",
-                "rm /etc/nginx/sites-enabled/default",
-                "sudo systemctl restart nginx",
-                {
-                  "Fn::Sub": "export AWS_REGION=${AWS::Region}"
-                },
-                "echo AWS_REGION=${AWS_REGION} >> /etc/environment",
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "export NEXTAUTH_URL=",
-                      "https://",
-                      {
-                        "Ref": "HostedZoneName"
-                      }
-                    ]
-                  ]
-                },
-                "echo NEXTAUTH_URL=${NEXTAUTH_URL} >> /etc/environment",
-                "set +x",
-                {
-                  "Fn::Sub": "export NEXTAUTH_SECRET=$(aws secretsmanager get-secret-value --region ${AWS::Region} --secret-id '/nextauth/secret' --query 'SecretString' --output text) "
-                },
-                "echo NEXTAUTH_SECRET=${NEXTAUTH_SECRET} >> /etc/environment",
-                "set -x",
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "export NEXTAUTH_COGNITO_CLIENT_ID=",
-                      {
-                        "Fn::ImportValue": {
-                          "Fn::Sub": "${CognitoUserPoolStackName}-UserPoolClientId"
-                        }
-                      }
-                    ]
-                  ]
-                },
-                "echo NEXTAUTH_COGNITO_CLIENT_ID=${NEXTAUTH_COGNITO_CLIENT_ID} >> /etc/environment",
-                "set +x",
-                {
-                  "Fn::Sub": "export NEXTAUTH_COGNITO_CLIENT_SECRET=$(aws secretsmanager get-secret-value --region ${AWS::Region} --secret-id '/nextauth/cognito/clientSecret' --query 'SecretString' --output text)"
-                },
-                "echo NEXTAUTH_COGNITO_CLIENT_SECRET=${NEXTAUTH_COGNITO_CLIENT_SECRET} >> /etc/environment",
-                "set -x",
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "export NEXTAUTH_COGNITO_ISSUER=",
-                      "https://cognito-idp.",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ".amazonaws.com/",
-                      {
-                        "Fn::ImportValue": {
-                          "Fn::Sub": "${CognitoUserPoolStackName}-UserPoolId"
-                        }
-                      }
-                    ]
-                  ]
-                },
-                "echo NEXTAUTH_COGNITO_ISSUER=${NEXTAUTH_COGNITO_ISSUER} >> /etc/environment",
-                "node server.js >> /var/log/node.log 2>&1 &"
-              ]
-            ]
-          }
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "temp-nextjs-test-ec2"
-          }
-        ]
+        }
       }
     },
     "ACMCertificate": {
